@@ -36,9 +36,24 @@
 
 <p>You probably only need the files <code>qrcodelib.lua</code> and <code>bit.lua</code> to use it efficiently.</p>
 
+<h3>Source code</h3>
+<p>You find the (looco) documented source code <a href="docs/qrcodelib.html" title="qrcodelib source code">here</a>.</p>
+
+<h3>Usage</h3>
+<p>See the file <code>qrcode.lua</code> for sample code. Basically you do this:</p>
+<pre>
+qrcodelib = dofile("qrcodelib.lua")
+
+local ok, tab_or_message = qrcodelib.qrcode(arg[1])
+if not ok then
+    print(tab_or_message)
+end
+</pre>
+<p>The returned table <code>tab_or_message</code> is a two dimensional array. First element is the columns, second element is the row for that column. The contents of a cell is either negative (a white cell) or positive (a black cell). If the function fails for some reason, the first argument is false and the second arguments contains an error message.</p>
+
 <h3>Support or Contact</h3>
 
-<p>Report bugs at the project page at <a href="https://github.com/speedata/luaqrcode">https://github.com/speedata/luaqrcode</a> or contact gundlach@speedata.</p>
+<p>Report bugs at the project page at <a href="https://github.com/speedata/luaqrcode">https://github.com/speedata/luaqrcode</a> or contact <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;g&#117;&#x6e;&#100;&#x6c;&#97;&#x63;&#104;&#x40;s&#112;&#x65;&#101;&#x64;&#97;&#x74;&#97;&#x2e;&#100;&#x65;">&#x67;&#117;&#x6e;&#100;&#x6c;&#97;&#x63;h&#64;&#x73;&#112;&#x65;&#101;&#x64;&#97;&#x74;a&#46;&#x64;&#101;</a>.</p>
       </section>
       <footer>
         <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>

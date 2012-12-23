@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>qrcodelib.lua</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <link rel="stylesheet" media="all" href="locco.css" />
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <table cellpadding="0" cellspacing="0">
+      <thead>
+        <tr>
+          <th class="docs">
+            <h1>
+              qrcodelib.lua
+            </h1>
+          </th>
+          <th class="code">
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+<tr id="section-1">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-1">&#182;</a>
+  </div>
+  
+<p>The qrcode library is licensed under the 3-clause BSD license (aka "new BSD")
+To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;g&#117;&#x6e;&#100;&#x6c;&#97;&#x63;&#104;&#x40;s&#112;&#x65;&#101;&#x64;&#97;&#x74;&#97;&#x2e;&#100;&#x65;">&#x67;&#117;&#x6e;&#100;&#x6c;&#97;&#x63;h&#64;&#x73;&#112;&#x65;&#101;&#x64;&#97;&#x74;a&#46;&#x64;&#101;</a>.</p>
+
+<p>Please report bugs on the <a href="http://github.com/speedata/luaqrcode">github project page</a>.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- Copyright (c) 2012, Patrick Gundlach
+</span><span class="c">-- All rights reserved.
+</span><span class="c">-- 
+</span><span class="c">-- Redistribution and use in source and binary forms, with or without
+</span><span class="c">-- modification, are permitted provided that the following conditions are met:
+</span><span class="c">--	 * Redistributions of source code must retain the above copyright
+</span><span class="c">--	   notice, this list of conditions and the following disclaimer.
+</span><span class="c">--	 * Redistributions in binary form must reproduce the above copyright
+</span><span class="c">--	   notice, this list of conditions and the following disclaimer in the
+</span><span class="c">--	   documentation and/or other materials provided with the distribution.
+</span><span class="c">--	 * Neither the name of the &lt;organization&gt; nor the
+</span><span class="c">--	   names of its contributors may be used to endorse or promote products
+</span><span class="c">--	   derived from this software without specific prior written permission.
+</span><span class="c">-- 
+</span><span class="c">-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+</span><span class="c">-- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+</span><span class="c">-- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+</span><span class="c">-- DISCLAIMED. IN NO EVENT SHALL &lt;COPYRIGHT HOLDER&gt; BE LIABLE FOR ANY
+</span><span class="c">-- DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+</span><span class="c">-- (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+</span><span class="c">-- LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+</span><span class="c">-- ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+</span><span class="c">-- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+</span><span class="c">-- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+</span>
+<span class="k">local</span> bit = <span class="nt">require</span>(<span class="s">"bit"</span>)
+</pre></div>
+</td>
+</tr><tr id="section-2">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-2">&#182;</a>
+  </div>
+  
+<h1>Overall workflow</h1>
+<p>The steps to generate the qrcode, assuming we already have the codeword:</p>
+
+<ol>
+    <li>Determine version, ec level and mode (=encoding) for codeword</li>
+    <li>Encode data</li>
+    <li>Arrange data and calculate error correction code</li>
+    <li>Generate 8 matrices with different masks and calculate the penalty</li>
+    <li>Return qrcode with least penalty</li>
+</ol>
+
+<p>Each step is of course more or less complex and needs further description</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+</pre></div>
+</td>
+</tr><tr id="section-3">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-3">&#182;</a>
+  </div>
+  
+<h1>Helper functions</h1>
+
+<p>We start with some helper functions</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- Return the binary representation of the number x with the width of `digits`.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">binary</span>(x,digits)
+  <span class="k">local</span> s=string.format(<span class="s">"&#37;o"</span>,x)
+  <span class="k">local</span> a={[<span class="s">"0"</span>]=<span class="s">"000"</span>,[<span class="s">"1"</span>]=<span class="s">"001"</span>, [<span class="s">"2"</span>]=<span class="s">"010"</span>,[<span class="s">"3"</span>]=<span class="s">"011"</span>,
+		   [<span class="s">"4"</span>]=<span class="s">"100"</span>,[<span class="s">"5"</span>]=<span class="s">"101"</span>, [<span class="s">"6"</span>]=<span class="s">"110"</span>,[<span class="s">"7"</span>]=<span class="s">"111"</span>}
+  s=string.gsub(s,<span class="s">"(.)"</span>,<span class="k">function</span> (d) <span class="k">return</span> a[d] <span class="k">end</span>)
+  <span class="c">-- remove leading 0s
+</span>  s = string.gsub(s,<span class="s">"^0*(.*)$"</span>,<span class="s">"&#37;1"</span>)
+  <span class="k">local</span> fmtstring = string.format(<span class="s">"&#37;&#37;0&#37;ds"</span>,digits)
+  <span class="k">return</span> string.format(fmtstring,s)
+<span class="k">end</span>
+
+<span class="c">-- A small helper function for add_typeinfo_to_matrix() and add_version_information()
+</span><span class="c">-- Add a 2 (black by default) / -2 (blank by default) to the matrix at position x,y
+</span><span class="c">-- depending on the bitstring (size 1!) where "0"=blank and "1"=black.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">fill_matrix_position</span>(matrix,bitstring,x,y)
+	<span class="k">if</span> bitstring == <span class="s">"1"</span> <span class="k">then</span>
+		matrix[x][y] = 2
+	<span class="k">else</span>
+		matrix[x][y] = -2
+	<span class="k">end</span>
+<span class="k">end</span>
+
+</pre></div>
+</td>
+</tr><tr id="section-4">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-4">&#182;</a>
+  </div>
+  
+<h1>Step 1: Determine version, ec level and mode for codeword</h1>
+
+<p>First we need to find out the version (= size) of the QR code. This depends on
+the input data (the mode to be used), the requested error correction level
+(normally we use the maximum level that fits into the minimal size).</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- Return the mode for the given string `str`.
+</span><span class="c">-- See table 2 of the spec. We only support mode 1, 2 and 4.
+</span><span class="c">-- That is: numeric, alaphnumeric and binary.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_mode</span>( str )
+	<span class="k">local</span> mode
+	<span class="k">if</span> string.match(str,<span class="s">"^[0-9]+$"</span>) <span class="k">then</span>
+		<span class="k">return</span> 1
+	<span class="k">elseif</span> string.match(str,<span class="s">"^[0-9A-Z $&#37;&#37;*./:+-]+$"</span>) <span class="k">then</span>
+		<span class="k">return</span> 2
+	<span class="k">else</span> 
+		<span class="k">return</span> 4
+	<span class="k">end</span>
+	<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"never reached"</span>)
+	<span class="k">return</span> <span class="k">nil</span>
+<span class="k">end</span>
+
+
+</pre></div>
+</td>
+</tr><tr id="section-5">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-5">&#182;</a>
+  </div>
+  
+<h2>Capacity of QR codes</h2>
+<p>The capacity is calculated as follow: \(\text{Number of data bits} = \text{number of codewords} * 8\).
+The number of data bits is now reduced by 4 (the mode indicator) and the length string,
+that varies between 8 and 16, depending on the version and the mode (see method <code>get_length()</code>). The
+remaining capacity is multiplied by the amount of data per bit string (numeric: 3, alphanumeric: 2, other: 1)
+and divided by the length of the bit string (numeric: 10, alphanumeric: 11, binary: 8, kanji: 13).
+Then the floor function is applied to the result:
+$$\Big\lfloor \frac{( \text{#data bits} - 4 - \text{length string}) * \text{data per bit string}}{\text{length of the bit string}} \Big\rfloor$$</p>
+
+<p>There is one problem remaining. The length string depends on the version,
+and the version depends on the length string. But we take this into account when calculating the
+the capacity, so this is not really a problem here.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- The capacity (number of codewords) of each version (1-40) for error correction levels 1-4 (LMQH).
+</span><span class="c">-- The higher the ec level, the lower the capacity of the version. Taken from spec, tables 7-11.
+</span><span class="k">local</span> capacity = {
+  {  19,   16,   13,	9},{  34,   28,   22,   16},{  55,   44,   34,   26},{  80,   64,   48,   36},
+  { 108,   86,   62,   46},{ 136,  108,   76,   60},{ 156,  124,   88,   66},{ 194,  154,  110,   86},
+  { 232,  182,  132,  100},{ 274,  216,  154,  122},{ 324,  254,  180,  140},{ 370,  290,  206,  158},
+  { 428,  334,  244,  180},{ 461,  365,  261,  197},{ 523,  415,  295,  223},{ 589,  453,  325,  253},
+  { 647,  507,  367,  283},{ 721,  563,  397,  313},{ 795,  627,  445,  341},{ 861,  669,  485,  385},
+  { 932,  714,  512,  406},{1006,  782,  568,  442},{1094,  860,  614,  464},{1174,  914,  664,  514},
+  {1276, 1000,  718,  538},{1370, 1062,  754,  596},{1468, 1128,  808,  628},{1531, 1193,  871,  661},
+  {1631, 1267,  911,  701},{1735, 1373,  985,  745},{1843, 1455, 1033,  793},{1955, 1541, 1115,  845},
+  {2071, 1631, 1171,  901},{2191, 1725, 1231,  961},{2306, 1812, 1286,  986},{2434, 1914, 1354, 1054},
+  {2566, 1992, 1426, 1096},{2702, 2102, 1502, 1142},{2812, 2216, 1582, 1222},{2956, 2334, 1666, 1276}}
+
+</pre></div>
+</td>
+</tr><tr id="section-6">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-6">&#182;</a>
+  </div>
+  
+<p>Return the smallest version for this codeword. If <code>requested_ec_level</code> is supplied,
+then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- mode = 1,2,4,8
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_version_eclevel</span>(len,mode,requested_ec_level)
+	<span class="k">local</span> local_mode = mode
+	<span class="k">if</span> mode == 4 <span class="k">then</span>
+		local_mode = 3
+	<span class="k">elseif</span> mode == 8 <span class="k">then</span>
+		local_mode = 4
+	<span class="k">end</span>
+	<span class="nt">assert</span>( local_mode <= 4 )
+
+	<span class="k">local</span> bytes, bits, digits, modebits, c
+	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
+	<span class="k">local</span> minversion = 40
+	<span class="k">local</span> maxec_level = 1
+	<span class="k">for</span> ec_level=1,4 <span class="k">do</span>
+		<span class="k">if</span> requested_ec_level == <span class="k">nil</span> <span class="o">or</span> ec_level >= requested_ec_level <span class="k">then</span>
+			<span class="k">for</span> version=1,#capacity <span class="k">do</span>
+				bits = capacity[version][ec_level] * 8
+				bits = bits - 4 <span class="c">-- the mode indicator
+</span>				<span class="k">if</span> version < 10 <span class="k">then</span>
+					digits = tab[1][local_mode]
+				<span class="k">elseif</span> version < 27 <span class="k">then</span>
+					digits = tab[2][local_mode]
+				<span class="k">elseif</span> version <= 40 <span class="k">then</span>
+					digits = tab[3][local_mode]
+				<span class="k">end</span>
+				modebits = bits - digits
+				<span class="k">if</span> local_mode == 1 <span class="k">then</span> <span class="c">-- numeric
+</span>					c = math.floor(modebits * 3 / 10)
+				<span class="k">elseif</span> local_mode == 2 <span class="k">then</span> <span class="c">-- alphanumeric
+</span>					c = math.floor(modebits * 2 / 11)
+				<span class="k">elseif</span> local_mode == 3 <span class="k">then</span> <span class="c">-- binary
+</span>					c = math.floor(modebits * 1 / 8)
+				<span class="k">else</span>
+					c = math.floor(modebits * 1 / 13)
+				<span class="k">end</span>
+				<span class="k">if</span> c >= len <span class="k">then</span>
+					<span class="k">if</span> version <= minversion <span class="k">then</span>
+						minversion = version
+						maxec_level = ec_level
+					<span class="k">end</span>
+					<span class="k">break</span>
+				<span class="k">end</span>
+			<span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">return</span> minversion, maxec_level
+<span class="k">end</span>
+
+<span class="c">-- Return a bit string of 0s and 1s that includes the length of the code string. 
+</span><span class="c">-- The modes are numeric = 1, alphanumeric = 2, binary = 4, and japanese = 8
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_length</span>(str,version,mode)
+	<span class="k">local</span> i = mode
+	<span class="k">if</span> mode == 4 <span class="k">then</span>
+		i = 3
+	<span class="k">elseif</span> mode == 8 <span class="k">then</span>
+		i = 4
+	<span class="k">end</span>
+	<span class="nt">assert</span>( i <= 4 )
+	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
+	<span class="k">local</span> digits
+	<span class="k">if</span> version < 10 <span class="k">then</span>
+		digits = tab[1][i]
+	<span class="k">elseif</span> version < 27 <span class="k">then</span>
+		digits = tab[2][i]
+	<span class="k">elseif</span> version <= 40 <span class="k">then</span>
+		digits = tab[3][i]
+	<span class="k">else</span>
+		<span class="nt">assert</span>(<span class="k">false</span>, <span class="s">"get_length, version &gt; 40 not supported"</span>)
+	<span class="k">end</span>
+	<span class="k">local</span> len = binary(#str,digits)
+	<span class="k">return</span> len
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-7">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-7">&#182;</a>
+  </div>
+  
+<p>If the <code>requested_ec_level</code> or the <code>mode</code> are provided, this will be used if possible.
+The mode depends on the characters used in the string <code>str</code>. It seems to be
+possible to split the QR code to handle multiple modes, but we don't do that.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="k">local</span> <span class="k">function</span> <span class="nf">get_version_eclevel_mode_bistringlength</span>(str,requested_ec_level,mode)
+	<span class="k">local</span> local_mode
+	<span class="k">if</span> mode <span class="k">then</span>
+		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"not implemented"</span>)
+		<span class="c">-- check if the mode is OK for the string
+</span>		local_mode = mode
+	<span class="k">else</span>
+		local_mode = get_mode(str)
+	<span class="k">end</span>
+	<span class="k">local</span> version, ec_level
+	version, ec_level = get_version_eclevel(#str,local_mode,requested_ec_level)
+	<span class="k">local</span> length_string = get_length(str,version,local_mode)
+	<span class="k">return</span> version,ec_level,binary(local_mode,4),local_mode,length_string
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-8">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-8">&#182;</a>
+  </div>
+  
+<h1>Step 2: Encode data</h1>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+</pre></div>
+</td>
+</tr><tr id="section-9">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-9">&#182;</a>
+  </div>
+  
+<p>There are several ways to encode the data. We currently support only numeric, alphanumeric and binary.
+We already chose the encoding (a.k.a. mode) in the first step, so we need to apply the mode to the
+codeword.</p>
+
+<p><strong>Numeric</strong>: take three digits and encode them in 10 bits <br/>
+<strong>Alphanumeric</strong>: take two characters and encode them in 11 bits <br/>
+<strong>Binary</strong>: take one octet and encode it in 8 bits</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="k">local</span> asciitbl = {
+	    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  <span class="c">-- 0x01-0x0f
+</span>	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  <span class="c">-- 0x10-0x1f
+</span>	36, -1, -1, -1, 37, 38, -1, -1, -1, -1, 39, 40, -1, 41, 42, 43,  <span class="c">-- 0x20-0x2f
+</span>	 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 44, -1, -1, -1, -1, -1,  <span class="c">-- 0x30-0x3f
+</span>	-1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  <span class="c">-- 0x40-0x4f
+</span>	25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, -1, -1, -1, -1, -1,  <span class="c">-- 0x50-0x5f
+</span>  }
+
+<span class="c">-- Return a binary representation of the numeric string `str`. This must contain only digits 0-9.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">encode_string_numeric</span>(str)
+	<span class="k">local</span> bitstring = <span class="s">""</span>
+	<span class="k">local</span> int
+	string.gsub(str,<span class="s">"..?.?"</span>,<span class="k">function</span>(a)
+		int = <span class="nt">tonumber</span>(a)
+		<span class="k">if</span> #a == 3 <span class="k">then</span>
+			bitstring = bitstring .. binary(int,10)
+		<span class="k">elseif</span> #a == 2 <span class="k">then</span>
+			bitstring = bitstring .. binary(int,7)
+		<span class="k">else</span>
+			bitstring = bitstring .. binary(int,4)
+		<span class="k">end</span>
+	<span class="k">end</span>)
+	<span class="k">return</span> bitstring
+<span class="k">end</span>
+
+<span class="c">-- Return a binary representation of the alphanumeric string `str`. This must contain only 
+</span><span class="c">-- digits 0-9, uppercase letters A-Z, space and the following chars: $&#37;*./:+-.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">encode_string_ascii</span>(str)
+	<span class="k">local</span> bitstring = <span class="s">""</span>
+	<span class="k">local</span> int
+	<span class="k">local</span> b1, b2
+	string.gsub(str,<span class="s">"..?"</span>,<span class="k">function</span>(a)
+		<span class="k">if</span> #a == 2 <span class="k">then</span>
+			b1 = asciitbl[string.byte(string.sub(a,1,1))]
+			b2 = asciitbl[string.byte(string.sub(a,2,2))]
+			int = b1 * 45 + b2
+			bitstring = bitstring .. binary(int,11)
+		<span class="k">else</span>
+			int = asciitbl[string.byte(a)]
+			bitstring = bitstring .. binary(int,6)
+		<span class="k">end</span>
+	  <span class="k">end</span>)
+	<span class="k">return</span> bitstring
+<span class="k">end</span>
+
+<span class="c">-- Return a bitstring representing string str in binary mode.
+</span><span class="c">-- We don't handle UTF-8 in any special way because we assume the
+</span><span class="c">-- scanner recognizes UTF-8 and displays it correctly.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">encode_string_binary</span>(str)
+	<span class="k">local</span> ret = {}
+	string.gsub(str,<span class="s">"."</span>,<span class="k">function</span>(x)
+		ret[#ret + 1] = binary(string.byte(x),8)
+	<span class="k">end</span>)
+	<span class="k">return</span> table.concat(ret)
+<span class="k">end</span>
+
+<span class="c">-- Return a bitstring representing string str in the given mode.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">encode_data</span>(str,mode)
+	<span class="k">if</span> mode == 1 <span class="k">then</span>
+		<span class="k">return</span> encode_string_numeric(str)
+	<span class="k">elseif</span> mode == 2 <span class="k">then</span>
+		<span class="k">return</span> encode_string_ascii(str)
+	<span class="k">elseif</span> mode == 4 <span class="k">then</span>
+		<span class="k">return</span> encode_string_binary(str)
+	<span class="k">else</span>
+		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"not implemented yet"</span>)
+	<span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c">-- Encoding the codeword is not enough. We need to make sure that 
+</span><span class="c">-- the length of the binary string is equal to the number of codewords of the version.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_pad_data</span>(version,ec_level,data)
+	<span class="k">local</span> count_to_pad, missing_digits
+	<span class="k">local</span> cpty = capacity[version][ec_level] * 8
+	count_to_pad = math.min(4,cpty - #data)
+	<span class="k">if</span> count_to_pad > 0 <span class="k">then</span>
+		data = data .. string.rep(<span class="s">"0"</span>,count_to_pad)
+	<span class="k">end</span>
+	<span class="k">if</span> math.mod(#data,8) ~= 0 <span class="k">then</span>
+		missing_digits = 8 - math.mod(#data,8)
+		data = data .. string.rep(<span class="s">"0"</span>,missing_digits)
+	<span class="k">end</span>
+	<span class="nt">assert</span>(math.mod(#data,8) == 0)
+	<span class="c">-- add "11101100" and "00010001" until enough data
+</span>	<span class="k">while</span> #data < cpty <span class="k">do</span>
+		data = data .. <span class="s">"11101100"</span>
+		<span class="k">if</span> #data < cpty <span class="k">then</span>
+			data = data .. <span class="s">"00010001"</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">return</span> data
+<span class="k">end</span>
+
+
+</pre></div>
+</td>
+</tr><tr id="section-10">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-10">&#182;</a>
+  </div>
+  
+<h1>Step 3: Organize data and calculate error correction code</h1>
+<p>The data in the qrcode is not encoded linearly. For example code 5-H has four blocks, the first two blocks
+contain 11 codewords and 22 error correction codes each, the second block contain 12 codewords and 22 ec codes each.
+We just take the table from the spec and don't calculate the blocks ourself. The table <code>ecblocks</code> contains this info.</p>
+
+<p>During the phase of splitting the data into codewords, we do the calculation for error correction codes. This step involves
+polynomial division. Find a math book from school and follow the code here :)</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+</pre></div>
+</td>
+</tr><tr id="section-11">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-11">&#182;</a>
+  </div>
+  
+<h3>Reed Solomon error correction</h3>
+<p>Now this is the slightly ugly part of the error correction. We start with log/antilog tables</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="k">local</span> alpha_int = {
+	[0] = 0,
+	  2,   4,   8,  16,  32,  64, 128,  29,  58, 116, 232, 205, 135,  19,  38,  76,
+	152,  45,  90, 180, 117, 234, 201, 143,   3,   6,  12,  24,  48,  96, 192, 157,
+	 39,  78, 156,  37,  74, 148,  53, 106, 212, 181, 119, 238, 193, 159,  35,  70,
+	140,   5,  10,  20,  40,  80, 160,  93, 186, 105, 210, 185, 111, 222, 161,  95,
+	190,  97, 194, 153,  47,  94, 188, 101, 202, 137,  15,  30,  60, 120, 240, 253,
+	231, 211, 187, 107, 214, 177, 127, 254, 225, 223, 163,  91, 182, 113, 226, 217,
+	175,  67, 134,  17,  34,  68, 136,  13,  26,  52, 104, 208, 189, 103, 206, 129,
+	 31,  62, 124, 248, 237, 199, 147,  59, 118, 236, 197, 151,  51, 102, 204, 133,
+	 23,  46,  92, 184, 109, 218, 169,  79, 158,  33,  66, 132,  21,  42,  84, 168,
+	 77, 154,  41,  82, 164,  85, 170,  73, 146,  57, 114, 228, 213, 183, 115, 230,
+	209, 191,  99, 198, 145,  63, 126, 252, 229, 215, 179, 123, 246, 241, 255, 227,
+	219, 171,  75, 150,  49,  98, 196, 149,  55, 110, 220, 165,  87, 174,  65, 130,
+	 25,  50, 100, 200, 141,   7,  14,  28,  56, 112, 224, 221, 167,  83, 166,  81,
+	162,  89, 178, 121, 242, 249, 239, 195, 155,  43,  86, 172,  69, 138,   9,  18,
+	 36,  72, 144,  61, 122, 244, 245, 247, 243, 251, 235, 203, 139,  11,  22,  44,
+	 88, 176, 125, 250, 233, 207, 131,  27,  54, 108, 216, 173,  71, 142,   1
+}	
+
+<span class="k">local</span> int_alpha = {
+	[0] = 0,
+	255,   1,  25,   2,  50,  26, 198,   3, 223,  51, 238,  27, 104, 199,  75,   4,
+	100, 224,  14,  52, 141, 239, 129,  28, 193, 105, 248, 200,   8,  76, 113,   5,
+	138, 101,  47, 225,  36,  15,  33,  53, 147, 142, 218, 240,  18, 130,  69,  29,
+	181, 194, 125, 106,  39, 249, 185, 201, 154,   9, 120,  77, 228, 114, 166,   6,
+	191, 139,  98, 102, 221,  48, 253, 226, 152,  37, 179,  16, 145,  34, 136,  54,
+	208, 148, 206, 143, 150, 219, 189, 241, 210,  19,  92, 131,  56,  70,  64,  30,
+	 66, 182, 163, 195,  72, 126, 110, 107,  58,  40,  84, 250, 133, 186,  61, 202,
+	 94, 155, 159,  10,  21, 121,  43,  78, 212, 229, 172, 115, 243, 167,  87,   7,
+	112, 192, 247, 140, 128,  99,  13, 103,  74, 222, 237,  49, 197, 254,  24, 227,
+	165, 153, 119,  38, 184, 180, 124,  17,  68, 146, 217,  35,  32, 137,  46,  55,
+	 63, 209,  91, 149, 188, 207, 205, 144, 135, 151, 178, 220, 252, 190,  97, 242,
+	 86, 211, 171,  20,  42,  93, 158, 132,  60,  57,  83,  71, 109,  65, 162,  31,
+	 45,  67, 216, 183, 123, 164, 118, 196,  23,  73, 236, 127,  12, 111, 246, 108,
+	161,  59,  82,  41, 157,  85, 170, 251,  96, 134, 177, 187, 204,  62,  90, 203,
+	 89,  95, 176, 156, 169, 160,  81,  11, 245,  22, 235, 122, 117,  44, 215,  79,
+	174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168,  80,  88, 175
+} 
+
+<span class="c">-- We only need the polynomial generators for block sizes 7, 10, 13, 15, 16, 17, 18, 20, 22, 24, 26, 28, and 30. Version
+</span><span class="c">-- 2 of the qr codes don't need larger ones (as opposed to version 1). The table has the format x^1*ɑ^21 + x^2*a^102 ...
+</span><span class="k">local</span> generator_polynomial = {
+	 [7] = { 21, 102, 238, 149, 146, 229,  87,   0},
+	[10] = { 45,  32,  94,  64,  70, 118,  61,  46,  67, 251,   0 },
+	[13] = { 78, 140, 206, 218, 130, 104, 106, 100,  86, 100, 176, 152,  74,   0 },
+	[15] = {105,  99,   5, 124, 140, 237,  58,  58,  51,  37, 202,  91,  61, 183,   8,   0},
+	[16] = {120, 225, 194, 182, 169, 147, 191,  91,   3,  76, 161, 102, 109, 107, 104, 120,   0},
+	[17] = {136, 163, 243,  39, 150,  99,  24, 147, 214, 206, 123, 239,  43,  78, 206, 139,  43,   0},
+	[18] = {153,  96,  98,   5, 179, 252, 148, 152, 187,  79, 170, 118,  97, 184,  94, 158, 234, 215,   0},
+	[20] = {190, 188, 212, 212, 164, 156, 239,  83, 225, 221, 180, 202, 187,  26, 163,  61,  50,  79,  60,  17,   0},
+	[22] = {231, 165, 105, 160, 134, 219,  80,  98, 172,   8,  74, 200,  53, 221, 109,  14, 230,  93, 242, 247, 171, 210,   0},
+	[24] = { 21, 227,  96,  87, 232, 117,   0, 111, 218, 228, 226, 192, 152, 169, 180, 159, 126, 251, 117, 211,  48, 135, 121, 229,   0},
+	[26] = { 70, 218, 145, 153, 227,  48, 102,  13, 142, 245,  21, 161,  53, 165,  28, 111, 201, 145,  17, 118, 182, 103,   2, 158, 125, 173,   0},
+	[28] = {123,   9,  37, 242, 119, 212, 195,  42,  87, 245,  43,  21, 201, 232,  27, 205, 147, 195, 190, 110, 180, 108, 234, 224, 104, 200, 223, 168,   0},
+	[30] = {180, 192,  40, 238, 216, 251,  37, 156, 130, 224, 193, 226, 173,  42, 125, 222,  96, 239,  86, 110,  48,  50, 182, 179,  31, 216, 152, 145, 173, 41, 0}}
+
+
+<span class="c">-- Turn a binary string of length 8*x into a table size x of numbers.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_bitstring_to_bytes</span>(data)
+	<span class="k">local</span> msg = {}
+	<span class="k">local</span> tab = string.gsub(data,<span class="s">"(........)"</span>,<span class="k">function</span>(x)
+		msg[#msg+1] = <span class="nt">tonumber</span>(x,2)
+		<span class="k">end</span>)
+	<span class="k">return</span> msg
+<span class="k">end</span>
+
+<span class="c">-- Return a table that has 0's in the first entries and then the alpha
+</span><span class="c">-- representation of the generator polynominal
+</span><span class="k">function</span> <span class="nf">get_generator_polynominal_adjusted</span>(num_ec_codewords,highest_exponent)
+	<span class="k">local</span> gp_alpha = {[0]=0}
+	<span class="k">for</span> i=0,highest_exponent - num_ec_codewords - 1 <span class="k">do</span>
+		gp_alpha[i] = 0
+	<span class="k">end</span>
+	<span class="k">local</span> gp = generator_polynomial[num_ec_codewords]
+	<span class="k">for</span> i=1,num_ec_codewords + 1 <span class="k">do</span>
+		gp_alpha[highest_exponent - num_ec_codewords + i - 1] = gp[i]
+	<span class="k">end</span>
+	<span class="k">return</span> gp_alpha
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-12">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-12">&#182;</a>
+  </div>
+  
+<p>These converter functions use the log/antilog table above.
+We could have created the table programatically, but I like fixed tables.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- Convert polynominal in int notation to alpha notation.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_to_alpha</span>( tab )
+	<span class="k">local</span> new_tab = {}
+	<span class="k">for</span> i=0,#tab <span class="k">do</span>
+		new_tab[i] = int_alpha[tab[i]]
+	<span class="k">end</span>
+	<span class="k">return</span> new_tab
+<span class="k">end</span>
+
+<span class="c">-- Convert polynominal in alpha notation to int notation.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_to_int</span>(tab,len_message)
+	<span class="k">local</span> new_tab = {}
+	<span class="k">for</span> i=0,#tab <span class="k">do</span>
+		new_tab[i] = alpha_int[tab[i]]
+	<span class="k">end</span>
+	<span class="k">return</span> new_tab
+<span class="k">end</span>
+
+<span class="c">-- That's the heart of the error correction calculation. 
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">calculate_error_correction</span>(data,num_ec_codewords)
+	<span class="k">local</span> mp
+	<span class="k">if</span> <span class="nt">type</span>(data)==<span class="s">"string"</span> <span class="k">then</span>
+		mp = convert_bitstring_to_bytes(data)
+	<span class="k">elseif</span> <span class="nt">type</span>(data)==<span class="s">"table"</span> <span class="k">then</span>
+		mp = data
+	<span class="k">else</span>
+		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"Unknown type for data: &#37;s"</span>,<span class="nt">type</span>(data))
+	<span class="k">end</span>
+	<span class="k">local</span> len_message = #mp
+
+	<span class="k">local</span> highest_exponent = len_message + num_ec_codewords - 1
+	<span class="k">local</span> gp_alpha,tmp
+	<span class="k">local</span> he
+	<span class="k">local</span> gp_int = {}
+	<span class="k">local</span> mp_int,mp_alpha = {},{}
+	<span class="c">-- create message shifted to left (highest exponent)
+</span>	<span class="k">for</span> i=1,len_message <span class="k">do</span>
+		mp_int[highest_exponent - i + 1] = mp[i]
+	<span class="k">end</span>
+	<span class="k">for</span> i=1,highest_exponent - len_message <span class="k">do</span>
+		mp_int[i] = 0
+	<span class="k">end</span>
+	mp_int[0] = 0
+
+	mp_alpha = convert_to_alpha(mp_int)
+
+	<span class="k">while</span> highest_exponent >= num_ec_codewords <span class="k">do</span>
+		gp_alpha = get_generator_polynominal_adjusted(num_ec_codewords,highest_exponent)
+
+		<span class="c">-- Multiply generator polynomial by first coefficient of the above polynomial
+</span>	
+		<span class="c">-- take the highest exponent from the message polynom (alpha) and add 
+</span>		<span class="c">-- it to the generator polynom
+</span>		<span class="k">local</span> exp = mp_alpha[highest_exponent]
+		<span class="k">for</span> i=highest_exponent,highest_exponent - num_ec_codewords,-1 <span class="k">do</span>
+			<span class="k">if</span> gp_alpha[i] + exp > 255 <span class="k">then</span>
+				gp_alpha[i] = math.mod(gp_alpha[i] + exp,255)
+			<span class="k">else</span>
+				gp_alpha[i] = gp_alpha[i] + exp
+			<span class="k">end</span>
+		<span class="k">end</span>
+		<span class="k">for</span> i=highest_exponent - num_ec_codewords - 1,0,-1 <span class="k">do</span>
+			gp_alpha[i] = 0
+		<span class="k">end</span>
+	
+		gp_int = convert_to_int(gp_alpha)
+		mp_int = convert_to_int(mp_alpha)
+	
+	
+		tmp = {}
+		<span class="k">for</span> i=highest_exponent,0,-1 <span class="k">do</span>
+			tmp[i] = bit.bxor(gp_int[i],mp_int[i])
+		<span class="k">end</span>
+		<span class="c">-- remove leading 0's
+</span>		he = highest_exponent
+		<span class="k">for</span> i=he,0,-1 <span class="k">do</span>
+			<span class="c">-- We need to stop if the length of the codeword is matched
+</span>			<span class="k">if</span> i < num_ec_codewords <span class="k">then</span> <span class="k">break</span> <span class="k">end</span>
+			<span class="k">if</span> tmp[i] == 0 <span class="k">then</span>
+				tmp[i] = <span class="k">nil</span>
+				highest_exponent = highest_exponent - 1
+			<span class="k">else</span>
+				<span class="k">break</span>
+			<span class="k">end</span>
+		<span class="k">end</span>
+		mp_int = tmp
+		mp_alpha = convert_to_alpha(mp_int)
+	<span class="k">end</span>
+	<span class="k">local</span> ret = {}
+
+	<span class="c">-- reverse data
+</span>	<span class="k">for</span> i=#mp_int,0,-1 <span class="k">do</span>
+		ret[#ret + 1] = mp_int[i]
+	<span class="k">end</span>
+	<span class="k">return</span> ret
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-13">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-13">&#182;</a>
+  </div>
+  
+<h4>Arranging the data</h4>
+<p>Now we arrange the data into smaller chunks. This table is taken from the spec.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- ecblocks has 40 entries, one for each version. Each version entry has 4 entries, for each LMQH
+</span><span class="c">-- ec level. Each entry has two or four fields, the odd files are the number of repetitions for the
+</span><span class="c">-- folowing block info. The first entry of the block is the total number of codewords in the block,
+</span><span class="c">-- the second entry is the number of data codewords. The third is not important.
+</span><span class="k">local</span> ecblocks = { 
+  {{  1,{ 26, 19, 2}                 },   {  1,{26,16, 4}},                  {  1,{26,13, 6}},                  {  1, {26, 9, 8}               }},
+  {{  1,{ 44, 34, 4}                 },   {  1,{44,28, 8}},                  {  1,{44,22,11}},                  {  1, {44,16,14}               }},
+  {{  1,{ 70, 55, 7}                 },   {  1,{70,44,13}},                  {  2,{35,17, 9}},                  {  2, {35,13,11}               }},
+  {{  1,{100, 80,10}                 },   {  2,{50,32, 9}},                  {  2,{50,24,13}},                  {  4, {25, 9, 8}               }},
+  {{  1,{134,108,13}                 },   {  2,{67,43,12}},                  {  2,{33,15, 9},  2,{34,16, 9}},   {  2, {33,11,11},  2,{34,12,11}}},
+  {{  2,{ 86, 68, 9}                 },   {  4,{43,27, 8}},                  {  4,{43,19,12}},                  {  4, {43,15,14}               }},
+  {{  2,{ 98, 78,10}                 },   {  4,{49,31, 9}},                  {  2,{32,14, 9},  4,{33,15, 9}},   {  4, {39,13,13},  1,{40,14,13}}},
+  {{  2,{121, 97,12}                 },   {  2,{60,38,11},  2,{61,39,11}},   {  4,{40,18,11},  2,{41,19,11}},   {  4, {40,14,13},  2,{41,15,13}}},
+  {{  2,{146,116,15}                 },   {  3,{58,36,11},  2,{59,37,11}},   {  4,{36,16,10},  4,{37,17,10}},   {  4, {36,12,12},  4,{37,13,12}}},
+  {{  2,{ 86, 68, 9},  2,{ 87, 69, 9}},   {  4,{69,43,13},  1,{70,44,13}},   {  6,{43,19,12},  2,{44,20,12}},   {  6, {43,15,14},  2,{44,16,14}}},
+  {{  4,{101, 81,10}                 },   {  1,{80,50,15},  4,{81,51,15}},   {  4,{50,22,14},  4,{51,23,14}},   {  3, {36,12,12},  8,{37,13,12}}},
+  {{  2,{116, 92,12},  2,{117, 93,12}},   {  6,{58,36,11},  2,{59,37,11}},   {  4,{46,20,13},  6,{47,21,13}},   {  7, {42,14,14},  4,{43,15,14}}},
+  {{  4,{133,107,13}                 },   {  8,{59,37,11},  1,{60,38,11}},   {  8,{44,20,12},  4,{45,21,12}},   { 12, {33,11,11},  4,{34,12,11}}},
+  {{  3,{145,115,15},  1,{146,116,15}},   {  4,{64,40,12},  5,{65,41,12}},   { 11,{36,16,10},  5,{37,17,10}},   { 11, {36,12,12},  5,{37,13,12}}},
+  {{  5,{109, 87,11},  1,{110, 88,11}},   {  5,{65,41,12},  5,{66,42,12}},   {  5,{54,24,15},  7,{55,25,15}},   { 11, {36,12,12},  7,{37,13,12}}},
+  {{  5,{122, 98,12},  1,{123, 99,12}},   {  7,{73,45,14},  3,{74,46,14}},   { 15,{43,19,12},  2,{44,20,12}},   {  3, {45,15,15}, 13,{46,16,15}}},
+  {{  1,{135,107,14},  5,{136,108,14}},   { 10,{74,46,14},  1,{75,47,14}},   {  1,{50,22,14}, 15,{51,23,14}},   {  2, {42,14,14}, 17,{43,15,14}}},
+  {{  5,{150,120,15},  1,{151,121,15}},   {  9,{69,43,13},  4,{70,44,13}},   { 17,{50,22,14},  1,{51,23,14}},   {  2, {42,14,14}, 19,{43,15,14}}},
+  {{  3,{141,113,14},  4,{142,114,14}},   {  3,{70,44,13}, 11,{71,45,13}},   { 17,{47,21,13},  4,{48,22,13}},   {  9, {39,13,13}, 16,{40,14,13}}},
+  {{  3,{135,107,14},  5,{136,108,14}},   {  3,{67,41,13}, 13,{68,42,13}},   { 15,{54,24,15},  5,{55,25,15}},   { 15, {43,15,14}, 10,{44,16,14}}},
+  {{  4,{144,116,14},  4,{145,117,14}},   { 17,{68,42,13}},                  { 17,{50,22,14},  6,{51,23,14}},   { 19, {46,16,15},  6,{47,17,15}}},
+  {{  2,{139,111,14},  7,{140,112,14}},   { 17,{74,46,14}},                  {  7,{54,24,15}, 16,{55,25,15}},   { 34, {37,13,12}               }},
+  {{  4,{151,121,15},  5,{152,122,15}},   {  4,{75,47,14}, 14,{76,48,14}},   { 11,{54,24,15}, 14,{55,25,15}},   { 16, {45,15,15}, 14,{46,16,15}}},
+  {{  6,{147,117,15},  4,{148,118,15}},   {  6,{73,45,14}, 14,{74,46,14}},   { 11,{54,24,15}, 16,{55,25,15}},   { 30, {46,16,15},  2,{47,17,15}}},
+  {{  8,{132,106,13},  4,{133,107,13}},   {  8,{75,47,14}, 13,{76,48,14}},   {  7,{54,24,15}, 22,{55,25,15}},   { 22, {45,15,15}, 13,{46,16,15}}},
+  {{ 10,{142,114,14},  2,{143,115,14}},   { 19,{74,46,14},  4,{75,47,14}},   { 28,{50,22,14},  6,{51,23,14}},   { 33, {46,16,15},  4,{47,17,15}}},
+  {{  8,{152,122,15},  4,{153,123,15}},   { 22,{73,45,14},  3,{74,46,14}},   {  8,{53,23,15}, 26,{54,24,15}},   { 12, {45,15,15}, 28,{46,16,15}}},
+  {{  3,{147,117,15}, 10,{148,118,15}},   {  3,{73,45,14}, 23,{74,46,14}},   {  4,{54,24,15}, 31,{55,25,15}},   { 11, {45,15,15}, 31,{46,16,15}}},
+  {{  7,{146,116,15},  7,{147,117,15}},   { 21,{73,45,14},  7,{74,46,14}},   {  1,{53,23,15}, 37,{54,24,15}},   { 19, {45,15,15}, 26,{46,16,15}}},
+  {{  5,{145,115,15}, 10,{146,116,15}},   { 19,{75,47,14}, 10,{76,48,14}},   { 15,{54,24,15}, 25,{55,25,15}},   { 23, {45,15,15}, 25,{46,16,15}}},
+  {{ 13,{145,115,15},  3,{146,116,15}},   {  2,{74,46,14}, 29,{75,47,14}},   { 42,{54,24,15},  1,{55,25,15}},   { 23, {45,15,15}, 28,{46,16,15}}},
+  {{ 17,{145,115,15}            	 },   { 10,{74,46,14}, 23,{75,47,14}},   { 10,{54,24,15}, 35,{55,25,15}},   { 19, {45,15,15}, 35,{46,16,15}}},
+  {{ 17,{145,115,15},  1,{146,116,15}},   { 14,{74,46,14}, 21,{75,47,14}},   { 29,{54,24,15}, 19,{55,25,15}},   { 11, {45,15,15}, 46,{46,16,15}}},
+  {{ 13,{145,115,15},  6,{146,116,15}},   { 14,{74,46,14}, 23,{75,47,14}},   { 44,{54,24,15},  7,{55,25,15}},   { 59, {46,16,15},  1,{47,17,15}}},
+  {{ 12,{151,121,15},  7,{152,122,15}},   { 12,{75,47,14}, 26,{76,48,14}},   { 39,{54,24,15}, 14,{55,25,15}},   { 22, {45,15,15}, 41,{46,16,15}}},
+  {{  6,{151,121,15}, 14,{152,122,15}},   {  6,{75,47,14}, 34,{76,48,14}},   { 46,{54,24,15}, 10,{55,25,15}},   {  2, {45,15,15}, 64,{46,16,15}}},
+  {{ 17,{152,122,15},  4,{153,123,15}},   { 29,{74,46,14}, 14,{75,47,14}},   { 49,{54,24,15}, 10,{55,25,15}},   { 24, {45,15,15}, 46,{46,16,15}}},
+  {{  4,{152,122,15}, 18,{153,123,15}},   { 13,{74,46,14}, 32,{75,47,14}},   { 48,{54,24,15}, 14,{55,25,15}},   { 42, {45,15,15}, 32,{46,16,15}}},
+  {{ 20,{147,117,15},  4,{148,118,15}},   { 40,{75,47,14},  7,{76,48,14}},   { 43,{54,24,15}, 22,{55,25,15}},   { 10, {45,15,15}, 67,{46,16,15}}},
+  {{ 19,{148,118,15},  6,{149,119,15}},   { 18,{75,47,14}, 31,{76,48,14}},   { 34,{54,24,15}, 34,{55,25,15}},   { 20, {45,15,15}, 61,{46,16,15}}}
+} 
+
+<span class="c">-- The bits that must be 0 if the version does fill the complete matrix.
+</span><span class="c">-- Example: for version 1, no bits need to be added after arranging the data, for version 2 we need to add 7 bits at the end.
+</span><span class="k">local</span> remainder = {0, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0}
+
+<span class="c">-- This is the formula for table 1 in the spec:
+</span><span class="c">-- function get_capacity_remainder( version )
+</span><span class="c">-- 	local len = version * 4 + 17
+</span><span class="c">-- 	local size = len^2
+</span><span class="c">-- 	local function_pattern_modules = 192 + 2 * len - 32 -- Position Adjustment pattern + timing pattern
+</span><span class="c">-- 	local count_alignemnt_pattern = #alignment_pattern[version]
+</span><span class="c">-- 	if count_alignemnt_pattern &gt; 0 then
+</span><span class="c">-- 		-- add 25 for each aligment pattern
+</span><span class="c">-- 		function_pattern_modules = function_pattern_modules + 25 * ( count_alignemnt_pattern^2 - 3 )
+</span><span class="c">-- 		-- but substract the timing pattern occupied by the aligment pattern on the top and left
+</span><span class="c">-- 		function_pattern_modules = function_pattern_modules - ( count_alignemnt_pattern - 2) * 10
+</span><span class="c">-- 	end
+</span><span class="c">-- 	size = size - function_pattern_modules
+</span><span class="c">-- 	if version &gt; 6 then
+</span><span class="c">-- 		size = size - 67
+</span><span class="c">-- 	else
+</span><span class="c">-- 		size = size - 31
+</span><span class="c">-- 	end
+</span><span class="c">-- 	return math.floor(size/8),math.mod(size,8)
+</span><span class="c">-- end
+</span>
+</pre></div>
+</td>
+</tr><tr id="section-14">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-14">&#182;</a>
+  </div>
+  
+<p>Example: Version 5-H has four data and four error correction blocks. The table above lists
+<code>2, {33,11,11},  2,{34,12,11}</code> for entry [5][4]. This means we take two blocks with 11 codewords
+and two blocks with 12 codewords, and two blocks with 33 - 11 = 22 ec codes and another
+two blocks with 34 - 12 = 22 ec codes. </p>
+<pre><code> Block 1: D1  D2  D3  ... D11
+ Block 2: D12 D13 D14 ... D22
+ Block 3: D23 D24 D25 ... D33 D34
+ Block 4: D35 D36 D37 ... D45 D46
+</code></pre>
+<p>Then we place the data like this in the matrix: D1, D12, D23, D35, D2, D13, D24, D36 ... D45, D34, D46.  The same goes
+with error correction codes.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- The given data can be a string of 0's and 1' (with #string mod 8 == 0).
+</span><span class="c">-- Alternatively the data can be a table of codewords. The number of codewords
+</span><span class="c">-- must match the capacity of the qr code.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">arrange_codewords_and_calculate_ec</span>( version,ec_level,data )
+	<span class="k">if</span> <span class="nt">type</span>(data)==<span class="s">"table"</span> <span class="k">then</span>
+		<span class="k">local</span> tmp = <span class="s">""</span>
+		<span class="k">for</span> i=1,#data <span class="k">do</span>
+			tmp = tmp .. binary(data[i],8)
+		<span class="k">end</span>
+		data = tmp
+	<span class="k">end</span>
+	<span class="c">-- If the size of the data is not enough for the codeword, we add 0's and two special bytes until finished.
+</span>	<span class="k">local</span> blocks = ecblocks[version][ec_level]
+	<span class="k">local</span> size_datablock_bytes, size_ecblock_bytes
+	<span class="k">local</span> datablocks = {}
+	<span class="k">local</span> ecblocks = {}
+	<span class="k">local</span> count = 1
+	<span class="k">local</span> pos = 0
+	<span class="k">local</span> cpty_ec_bits = 0
+	<span class="k">for</span> i=1,#blocks/2 <span class="k">do</span>
+		<span class="k">for</span> j=1,blocks[2*i - 1] <span class="k">do</span>
+			size_datablock_bytes = blocks[2*i][2]
+			size_ecblock_bytes   = blocks[2*i][1] - blocks[2*i][2]
+			cpty_ec_bits = cpty_ec_bits + size_ecblock_bytes * 8
+			datablocks[#datablocks + 1] = string.sub(data, pos * 8 + 1,( pos + size_datablock_bytes)*8)
+			tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
+			tmp_str = <span class="s">""</span>
+			<span class="k">for</span> x=1,#tmp_tab <span class="k">do</span>
+				tmp_str = tmp_str .. binary(tmp_tab[x],8)
+			<span class="k">end</span>
+			ecblocks[#ecblocks + 1] = tmp_str
+			pos = pos + size_datablock_bytes
+			count = count + 1
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">local</span> arranged_data = <span class="s">""</span>
+	pos = 1
+	<span class="k">repeat</span>
+		<span class="k">for</span> i=1,#datablocks <span class="k">do</span>
+			<span class="k">if</span> pos < #datablocks[i] <span class="k">then</span>
+				arranged_data = arranged_data .. string.sub(datablocks[i],pos, pos + 7)
+			<span class="k">end</span>
+		<span class="k">end</span>
+		pos = pos + 8
+	<span class="k">until</span> #arranged_data == #data
+	<span class="c">-- ec
+</span>	<span class="k">local</span> arranged_ec = <span class="s">""</span>
+	pos = 1
+	<span class="k">repeat</span>
+		<span class="k">for</span> i=1,#ecblocks <span class="k">do</span>
+			<span class="k">if</span> pos < #ecblocks[i] <span class="k">then</span>
+				arranged_ec = arranged_ec .. string.sub(ecblocks[i],pos, pos + 7)
+			<span class="k">end</span>
+		<span class="k">end</span>
+		pos = pos + 8
+	<span class="k">until</span> #arranged_ec == cpty_ec_bits
+	<span class="k">return</span> arranged_data .. arranged_ec
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-15">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-15">&#182;</a>
+  </div>
+  
+<h1>Step 4: Generate 8 matrices with different masks and calculate the penalty</h1>
+
+<h2>Prepare matrix</h2>
+<p>The first step is to prepare an <em>empty</em> matrix for a given size/mask. The matrix has a
+few predefined areas that must be black or blank. We encode the matrix with a two
+dimensional field where the numbers determine which pixel is blank or not.</p>
+
+<p>The following code is used for our matrix:</p>
+<pre><code> 0 = not in use yet, 
+-2 = blank by mandatory pattern, 
+ 2 = black by mandatory pattern, 
+-1 = blank by data, 
+ 1 = black by data
+</code></pre>
+
+
+<p>To prepare the <em>empty</em>, we add positioning, alingment and timing patters.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+</pre></div>
+</td>
+</tr><tr id="section-16">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-16">&#182;</a>
+  </div>
+  
+<h3>Positioning patterns</h3>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="k">local</span> <span class="k">function</span> <span class="nf">add_position_detection_patterns</span>(tab_x)
+	<span class="k">local</span> size = #tab_x
+	<span class="c">-- allocate quite zone in the matrix area
+</span>	<span class="k">for</span> i=1,8 <span class="k">do</span>
+		<span class="k">for</span> j=1,8 <span class="k">do</span>
+			tab_x[i][j] = -2
+			tab_x[size - 8 + i][j] = -2
+			tab_x[i][size - 8 + j] = -2
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="c">-- draw the detection pattern (outer)
+</span>	<span class="k">for</span> i=1,7 <span class="k">do</span>
+		<span class="c">-- top left
+</span>		tab_x[1][i]=2
+		tab_x[7][i]=2
+		tab_x[i][1]=2
+		tab_x[i][7]=2
+
+		<span class="c">-- top right
+</span>		tab_x[size][i]=2
+		tab_x[size - 6][i]=2
+		tab_x[size - i + 1][1]=2
+		tab_x[size - i + 1][7]=2
+
+		<span class="c">-- bottom left
+</span>		tab_x[1][size - i + 1]=2
+		tab_x[7][size - i + 1]=2
+		tab_x[i][size - 6]=2
+		tab_x[i][size]=2
+	<span class="k">end</span>
+	<span class="c">-- draw the detection pattern (inner)
+</span>	<span class="k">for</span> i=1,3 <span class="k">do</span>
+		<span class="k">for</span> j=1,3 <span class="k">do</span>
+			<span class="c">-- top left
+</span>			tab_x[2+j][i+2]=2
+			<span class="c">-- top right
+</span>			tab_x[size - j - 1][i+2]=2
+			<span class="c">-- bottom left
+</span>			tab_x[2 + j][size - i - 1]=2
+		<span class="k">end</span>
+	<span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-17">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-17">&#182;</a>
+  </div>
+  
+<h3>Timing patterns</h3>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- The timing patterns (two) are the dashed lines between two adjacent positioning patterns on row/column 7.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_timing_pattern</span>(tab_x)
+	<span class="k">local</span> line,col
+	line = 7
+	col = 9
+	<span class="k">for</span> i=col,#tab_x - 8 <span class="k">do</span>
+		<span class="k">if</span> math.mod(i,2) == 1 <span class="k">then</span>
+			tab_x[i][line] = 2
+		<span class="k">else</span>
+			tab_x[i][line] = -2
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">for</span> i=col,#tab_x - 8 <span class="k">do</span>
+		<span class="k">if</span> math.mod(i,2) == 1 <span class="k">then</span>
+			tab_x[line][i] = 2
+		<span class="k">else</span>
+			tab_x[line][i] = -2
+		<span class="k">end</span>
+	<span class="k">end</span>
+<span class="k">end</span>
+
+</pre></div>
+</td>
+</tr><tr id="section-18">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-18">&#182;</a>
+  </div>
+  
+<h3>Alignment patterns</h3>
+<p>The alignment patterns must be added to the matrix for versions > 1. The amount and positions depend on the versions and are
+given by the spec. Beware: the patterns must not be placed where we have the positioning patterns
+(that is: top left, top right and bottom left.)</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- For each version, where should we place the alignment patterns? See table E.1 of the spec
+</span><span class="k">local</span> alignment_pattern = {
+  {},{6,18},{6,22},{6,26},{6,30},{6,34}, <span class="c">-- 1-6
+</span>  {6,22,38},{6,24,42},{6,26,46},{6,28,50},{6,30,54},{6,32,58},{6,34,62}, <span class="c">-- 7-13
+</span>  {6,26,46,66},{6,26,48,70},{6,26,50,74},{6,30,54,78},{6,30,56,82},{6,30,58,86},{6,34,62,90}, <span class="c">-- 14-20
+</span>  {6,28,50,72,94},{6,26,50,74,98},{6,30,54,78,102},{6,28,54,80,106},{6,32,58,84,110},{6,30,58,86,114},{6,34,62,90,118}, <span class="c">-- 21-27
+</span>  {6,26,50,74,98 ,122},{6,30,54,78,102,126},{6,26,52,78,104,130},{6,30,56,82,108,134},{6,34,60,86,112,138},{6,30,58,86,114,142},{6,34,62,90,118,146}, <span class="c">-- 28-34
+</span>  {6,30,54,78,102,126,150}, {6,24,50,76,102,128,154},{6,28,54,80,106,132,158},{6,32,58,84,110,136,162},{6,26,54,82,110,138,166},{6,30,58,86,114,142,170} <span class="c">-- 35 - 40
+</span>}
+</pre></div>
+</td>
+</tr><tr id="section-19">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-19">&#182;</a>
+  </div>
+  
+<p>The alignment pattern has size 5x5 and looks like this:</p>
+<pre><code>XXXXX
+X   X
+X X X
+X   X
+XXXXX
+</code></pre>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="k">local</span> <span class="k">function</span> <span class="nf">add_alignment_pattern</span>( tab_x )
+	<span class="k">local</span> version = (#tab_x - 17) / 4
+	<span class="k">local</span> ap = alignment_pattern[version]
+	<span class="k">local</span> pos_x, pos_y
+	<span class="k">for</span> x=1,#ap <span class="k">do</span>
+		<span class="k">for</span> y=1,#ap <span class="k">do</span>
+			<span class="c">-- we must not put an alignment pattern on top of the positioning pattern
+</span>			<span class="k">if</span> <span class="o">not</span> (x == 1 <span class="o">and</span> y == 1 <span class="o">or</span> x == #ap <span class="o">and</span> y == 1 <span class="o">or</span> x == 1 <span class="o">and</span> y == #ap ) <span class="k">then</span>
+				pos_x = ap[x] + 1
+				pos_y = ap[y] + 1
+				tab_x[pos_x][pos_y] = 2
+				tab_x[pos_x+1][pos_y] = -2
+				tab_x[pos_x-1][pos_y] = -2
+				tab_x[pos_x+2][pos_y] =  2
+				tab_x[pos_x-2][pos_y] =  2
+				tab_x[pos_x  ][pos_y - 2] = 2
+				tab_x[pos_x+1][pos_y - 2] = 2
+				tab_x[pos_x-1][pos_y - 2] = 2
+				tab_x[pos_x+2][pos_y - 2] = 2
+				tab_x[pos_x-2][pos_y - 2] = 2
+				tab_x[pos_x  ][pos_y + 2] = 2
+				tab_x[pos_x+1][pos_y + 2] = 2
+				tab_x[pos_x-1][pos_y + 2] = 2
+				tab_x[pos_x+2][pos_y + 2] = 2
+				tab_x[pos_x-2][pos_y + 2] = 2
+
+				tab_x[pos_x  ][pos_y - 1] = -2
+				tab_x[pos_x+1][pos_y - 1] = -2
+				tab_x[pos_x-1][pos_y - 1] = -2
+				tab_x[pos_x+2][pos_y - 1] =  2
+				tab_x[pos_x-2][pos_y - 1] =  2
+				tab_x[pos_x  ][pos_y + 1] = -2
+				tab_x[pos_x+1][pos_y + 1] = -2
+				tab_x[pos_x-1][pos_y + 1] = -2
+				tab_x[pos_x+2][pos_y + 1] =  2
+				tab_x[pos_x-2][pos_y + 1] =  2
+			<span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-20">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-20">&#182;</a>
+  </div>
+  
+<h3>Type information</h3>
+<p>Let's not forget the type information that is in column 9 next to the left positioning patterns and on row 9 below
+the top positioning patterns. This type information is not fixed, it depends on the mask and the error correction.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- The first index is ec level (LMQH,1-4), the second is the mask (0-7). This bitstring of length 15 is to be used
+</span><span class="c">-- as mandatory pattern in the qrcode. Mask -1 is for debugging purpose only and is the 'noop' mask.
+</span><span class="k">local</span> typeinfo = {
+	{ [-1]= <span class="s">"111111111111111"</span>, [0] = <span class="s">"111011111000100"</span>, <span class="s">"111001011110011"</span>, <span class="s">"111110110101010"</span>, <span class="s">"111100010011101"</span>, <span class="s">"110011000101111"</span>, <span class="s">"110001100011000"</span>, <span class="s">"110110001000001"</span>, <span class="s">"110100101110110"</span> },
+	{ [-1]= <span class="s">"111111111111111"</span>, [0] = <span class="s">"101010000010010"</span>, <span class="s">"101000100100101"</span>, <span class="s">"101111001111100"</span>, <span class="s">"101101101001011"</span>, <span class="s">"100010111111001"</span>, <span class="s">"100000011001110"</span>, <span class="s">"100111110010111"</span>, <span class="s">"100101010100000"</span> },
+	{ [-1]= <span class="s">"111111111111111"</span>, [0] = <span class="s">"011010101011111"</span>, <span class="s">"011000001101000"</span>, <span class="s">"011111100110001"</span>, <span class="s">"011101000000110"</span>, <span class="s">"010010010110100"</span>, <span class="s">"010000110000011"</span>, <span class="s">"010111011011010"</span>, <span class="s">"010101111101101"</span> },
+	{ [-1]= <span class="s">"111111111111111"</span>, [0] = <span class="s">"001011010001001"</span>, <span class="s">"001001110111110"</span>, <span class="s">"001110011100111"</span>, <span class="s">"001100111010000"</span>, <span class="s">"000011101100010"</span>, <span class="s">"000001001010101"</span>, <span class="s">"000110100001100"</span>, <span class="s">"000100000111011"</span> }
+}
+
+<span class="c">-- The typeinfo is a mixture of mask and ec level information and is 
+</span><span class="c">-- added twice to the qr code, one horizontal, one vertical.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_typeinfo_to_matrix</span>( matrix,ec_level,mask )
+	<span class="k">local</span> ec_mask_type = typeinfo[ec_level][mask]
+
+	<span class="k">local</span> bit
+	<span class="c">-- vertical from bottom to top
+</span>	<span class="k">for</span> i=1,7 <span class="k">do</span>
+		bit = string.sub(ec_mask_type,i,i)
+		fill_matrix_position(matrix, bit, 9, #matrix - i + 1)
+	<span class="k">end</span>
+	<span class="k">for</span> i=8,9 <span class="k">do</span>
+		bit = string.sub(ec_mask_type,i,i)
+		fill_matrix_position(matrix,bit,9,17-i)
+	<span class="k">end</span>
+	<span class="k">for</span> i=10,15 <span class="k">do</span>
+		bit = string.sub(ec_mask_type,i,i)
+		fill_matrix_position(matrix,bit,9,16 - i)
+	<span class="k">end</span>
+	<span class="c">-- horizontal, left to right
+</span>	<span class="k">for</span> i=1,6 <span class="k">do</span>
+		bit = string.sub(ec_mask_type,i,i)
+		fill_matrix_position(matrix,bit,i,9)
+	<span class="k">end</span>
+	bit = string.sub(ec_mask_type,7,7)
+	fill_matrix_position(matrix,bit,8,9)
+	<span class="k">for</span> i=8,15 <span class="k">do</span>
+		bit = string.sub(ec_mask_type,i,i)
+		fill_matrix_position(matrix,bit,#matrix - 15 + i,9)
+	<span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c">-- Bits for version information 7-40
+</span><span class="k">local</span> version_information = {<span class="s">"001010010011111000"</span>, <span class="s">"000111101101000100"</span>, <span class="s">"100110010101100100"</span>,<span class="s">"011001011001010100"</span>,
+  <span class="s">"011011111101110100"</span>, <span class="s">"001000110111001100"</span>, <span class="s">"111000100001101100"</span>, <span class="s">"010110000011011100"</span>, <span class="s">"000101001001111100"</span>,
+  <span class="s">"000111101101000010"</span>, <span class="s">"010111010001100010"</span>, <span class="s">"111010000101010010"</span>, <span class="s">"001001100101110010"</span>, <span class="s">"011001011001001010"</span>,
+  <span class="s">"011000001011101010"</span>, <span class="s">"100100110001011010"</span>, <span class="s">"000110111111111010"</span>, <span class="s">"001000110111000110"</span>, <span class="s">"000100001111100110"</span>,
+  <span class="s">"110101011111010110"</span>, <span class="s">"000001110001110110"</span>, <span class="s">"010110000011001110"</span>, <span class="s">"001111110011101110"</span>, <span class="s">"101011101011011110"</span>,
+  <span class="s">"000000101001111110"</span>, <span class="s">"101010111001000001"</span>, <span class="s">"000001111011100001"</span>, <span class="s">"010111010001010001"</span>, <span class="s">"011111001111110001"</span>,
+  <span class="s">"110100001101001001"</span>, <span class="s">"001110100001101001"</span>, <span class="s">"001001100101011001"</span>, <span class="s">"010000010101111001"</span>, <span class="s">"100101100011000101"</span> }
+
+<span class="c">-- Versions 7 and above need two bitfields with version information added to the code
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_version_information</span>(matrix,version)
+	<span class="k">if</span> version < 7 <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
+	<span class="k">local</span> size = #matrix
+	<span class="k">local</span> bitstring = version_information[version - 6]
+	<span class="k">local</span> x,y, bit
+	<span class="k">local</span> start_x, start_y
+	<span class="c">-- first top right
+</span>	start_x = #matrix - 10
+	start_y = 1
+	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
+		bit = string.sub(bitstring,i,i)
+		x = start_x + math.mod(i - 1,3)
+		y = start_y + math.floor( (i - 1) / 3 )
+		fill_matrix_position(matrix,bit,x,y)
+	<span class="k">end</span>
+
+	<span class="c">-- now bottom left
+</span>	start_x = 1
+	start_y = #matrix - 10
+	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
+		bit = string.sub(bitstring,i,i)
+		x = start_x + math.floor( (i - 1) / 3 )
+		y = start_y + math.mod(i - 1,3)
+		fill_matrix_position(matrix,bit,x,y)
+	<span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-21">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-21">&#182;</a>
+  </div>
+  
+<p>Now it's time to use the methods above to create a prefilled matrix for the given mask</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="k">local</span> <span class="k">function</span> <span class="nf">prepare_matrix_with_mask</span>( version,ec_level, mask )
+	<span class="k">local</span> size
+	<span class="k">local</span> tab_x = {}
+
+	size = version * 4 + 17
+	<span class="k">for</span> i=1,size <span class="k">do</span>
+		tab_x[i]={}
+		<span class="k">for</span> j=1,size <span class="k">do</span>
+			tab_x[i][j] = 0
+		<span class="k">end</span>
+	<span class="k">end</span>
+	add_position_detection_patterns(tab_x)
+	add_timing_pattern(tab_x)
+	add_version_information(tab_x,version)
+
+	<span class="c">-- black pixel above lower left position detection pattern
+</span>	tab_x[9][size - 7] = 2
+	add_alignment_pattern(tab_x)
+	add_typeinfo_to_matrix(tab_x,ec_level, mask)
+	<span class="k">return</span> tab_x
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-22">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-22">&#182;</a>
+  </div>
+  
+<p>Finally we come to the place where we need to put the calculated data (remember step 3?) into the qr code.
+We do this for each mask. BTW speaking of mask, this is what we find in the spec:</p>
+<pre><code> Mask Pattern Reference   Condition
+ 000                      (y + x) mod 2 = 0
+ 001                      y mod 2 = 0
+ 010                      x mod 3 = 0
+ 011                      (y + x) mod 3 = 0
+ 100                      ((y div 2) + (x div 3)) mod 2 = 0
+ 101                      (y x) mod 2 + (y x) mod 3 = 0
+ 110                      ((y x) mod 2 + (y x) mod 3) mod 2 = 0
+ 111                      ((y x) mod 3 + (y+x) mod 2) mod 2 = 0
+</code></pre>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre>
+<span class="c">-- Return 1 (black) or -1 (blank) depending on the mask, value and position. 
+</span><span class="c">-- Parameter mask is 0-7 (-1 for 'no mask'). x and y are 1-based coordinates,
+</span><span class="c">-- 1,1 = upper left. tonumber(value) must be 0 or 1.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_pixel_with_mask</span>( mask, x,y,value )
+	x = x - 1
+	y = y - 1
+	<span class="k">local</span> invert = <span class="k">false</span>
+	<span class="c">-- test purpose only:
+</span>	<span class="k">if</span> mask == -1 <span class="k">then</span>
+		<span class="c">-- ignore, no masking applied
+</span>	<span class="k">elseif</span> mask == 0 <span class="k">then</span>
+		<span class="k">if</span> math.mod(x + y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 1 <span class="k">then</span>
+		<span class="k">if</span> math.mod(y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 2 <span class="k">then</span>
+		<span class="k">if</span> math.mod(x,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 3 <span class="k">then</span>
+		<span class="k">if</span> math.mod(x + y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 4 <span class="k">then</span>
+		<span class="k">if</span> math.mod(math.floor(y / 2) + math.floor(x / 3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 5 <span class="k">then</span>
+		<span class="k">if</span> math.mod(x * y,2) + math.mod(x * y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 6 <span class="k">then</span>
+		<span class="k">if</span> math.mod(math.mod(x * y,2) + math.mod(x * y,3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">elseif</span> mask == 7 <span class="k">then</span>
+		<span class="k">if</span> math.mod(math.mod(x * y,3) + math.mod(x + y,2),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+	<span class="k">else</span>
+		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"This can't happen (mask must be &lt;= 7)"</span>)
+	<span class="k">end</span>
+	<span class="k">if</span> invert <span class="k">then</span>
+		<span class="c">-- value = 1? -&gt; -1, value = 0? -&gt; 1
+</span>		<span class="k">return</span> 1 - 2 * <span class="nt">tonumber</span>(value)
+	<span class="k">else</span>
+		<span class="c">-- value = 1? -&gt; 1, value = 0? -&gt; -1
+</span>		<span class="k">return</span> -1 + 2*<span class="nt">tonumber</span>(value)
+	<span class="k">end</span>
+<span class="k">end</span>
+
+
+<span class="c">-- We need up to 8 positions in the matrix. Only the last few bits may be less then 8.
+</span><span class="c">-- The function returns a table of (up to) 8 entries with subtables where
+</span><span class="c">-- the x coordinate is the first and the y coordinate is the second entry.
+</span><span class="k">function</span> <span class="nf">get_next_free_positions</span>(matrix,x,y,dir,byte)
+	<span class="k">local</span> ret = {}
+	<span class="k">local</span> count = 1
+	<span class="k">local</span> mode = <span class="s">"right"</span>
+	<span class="k">while</span> count <= #byte <span class="k">do</span>
+		<span class="k">if</span> mode == <span class="s">"right"</span> <span class="o">and</span> matrix[x][y] == 0 <span class="k">then</span>
+			ret[#ret + 1] = {x,y}
+			mode = <span class="s">"left"</span>
+			count = count + 1
+		<span class="k">elseif</span> mode == <span class="s">"left"</span> <span class="o">and</span> matrix[x-1][y] == 0 <span class="k">then</span>
+			ret[#ret + 1] = {x-1,y}
+			mode = <span class="s">"right"</span>
+			count = count + 1
+			<span class="k">if</span> dir == <span class="s">"up"</span> <span class="k">then</span>
+				y = y - 1
+			<span class="k">else</span>
+				y = y + 1
+			<span class="k">end</span>
+		<span class="k">elseif</span> mode == <span class="s">"right"</span> <span class="o">and</span> matrix[x-1][y] == 0 <span class="k">then</span>
+			ret[#ret + 1] = {x-1,y}
+			count = count + 1
+			<span class="k">if</span> dir == <span class="s">"up"</span> <span class="k">then</span>
+				y = y - 1
+			<span class="k">else</span>
+				y = y + 1
+			<span class="k">end</span>
+		<span class="k">else</span>
+			<span class="k">if</span> dir == <span class="s">"up"</span> <span class="k">then</span>
+				y = y - 1
+			<span class="k">else</span>
+				y = y + 1
+			<span class="k">end</span>
+		<span class="k">end</span>
+		<span class="k">if</span> y < 1 <span class="o">or</span> y > #matrix <span class="k">then</span>
+			x = x - 2
+			<span class="c">-- don't overwrite the timing pattern
+</span>			<span class="k">if</span> x == 7 <span class="k">then</span> x = 6 <span class="k">end</span>
+			<span class="k">if</span> dir == <span class="s">"up"</span> <span class="k">then</span>
+				dir = <span class="s">"down"</span>
+				y = 1
+			<span class="k">else</span>
+				dir = <span class="s">"up"</span>
+				y = #matrix
+			<span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">return</span> ret,x,y,dir
+<span class="k">end</span>
+
+<span class="c">-- Add the data string (0's and 1's) to the matrix for the given mask.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_data_to_matrix</span>(matrix,data,mask)
+	size = #matrix
+	<span class="k">local</span> x,y,positions
+	<span class="k">local</span> _x,_y,m
+	<span class="k">local</span> dir = <span class="s">"up"</span>
+	<span class="k">local</span> byte_number = 0
+	x,y = size,size
+	string.gsub(data,<span class="s">".?.?.?.?.?.?.?.?"</span>,<span class="k">function</span> ( byte )
+		byte_number = byte_number + 1
+		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,byte,mask)
+		<span class="k">for</span> i=1,#byte <span class="k">do</span>
+			_x = positions[i][1]
+			_y = positions[i][2]
+			m = get_pixel_with_mask(mask,_x,_y,string.sub(byte,i,i))
+			<span class="k">if</span> debugging <span class="k">then</span>
+				matrix[_x][_y] = m * (i + 10)
+			<span class="k">else</span>
+				matrix[_x][_y] = m
+			<span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>)
+<span class="k">end</span>
+
+</pre></div>
+</td>
+</tr><tr id="section-23">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-23">&#182;</a>
+  </div>
+  
+<p>The total penalty of the matrix is the sum of four steps. The following steps are taken into account:</p>
+
+<ol>
+    <li>Adjacent modules in row/column in same color</li>
+    <li>Block of modules in same color</li>
+    <li>1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column</li>
+    <li>Proportion of dark modules in entire symbol</li>
+</ol>
+
+<p>This all is done to avoid bad patterns in the code that prevent the scanner from
+reading the code.</p>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- Return the penalty for the given matrix
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">calculate_penalty</span>(matrix)
+	<span class="k">local</span> penalty1, penalty2, penalty3, penalty4 = 0,0,0,0
+	<span class="k">local</span> size = #matrix
+	<span class="c">-- this is for penalty 4
+</span>	<span class="k">local</span> number_of_dark_cells = 0
+
+	<span class="c">-- 1: Adjacent modules in row/column in same color
+</span>	<span class="c">-- --------------------------------------------
+</span>	<span class="c">-- No. of modules = (5+i)  -&gt; 3 + i
+</span>	<span class="k">local</span> last_bit_blank <span class="c">-- &lt; 0:  blank, &gt; 0: black
+</span>	<span class="k">local</span> is_blank
+	<span class="k">local</span> number_of_consecutive_bits
+	<span class="c">-- first: vertical
+</span>	<span class="k">for</span> x=1,size <span class="k">do</span>
+		number_of_consecutive_bits = 0
+		last_bit_blank = <span class="k">nil</span>
+		<span class="k">for</span> y = 1,size <span class="k">do</span>
+			<span class="k">if</span> matrix[x][y] > 0 <span class="k">then</span>
+				<span class="c">-- small optimization: this is for penalty 4 
+</span>				number_of_dark_cells = number_of_dark_cells + 1
+				is_blank = <span class="k">false</span>
+			<span class="k">else</span>
+				is_blank = <span class="k">true</span>
+			<span class="k">end</span>
+			is_blank = matrix[x][y] < 0
+			<span class="k">if</span> last_bit_blank == is_blank <span class="k">then</span>
+				number_of_consecutive_bits = number_of_consecutive_bits + 1
+			<span class="k">else</span>
+				<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+					penalty1 = penalty1 + number_of_consecutive_bits - 2
+				<span class="k">end</span>
+				number_of_consecutive_bits = 1
+			<span class="k">end</span>
+			last_bit_blank = is_blank
+		<span class="k">end</span>
+		<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+			penalty1 = penalty1 + number_of_consecutive_bits - 2
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="c">-- now horizontal
+</span>	<span class="k">for</span> y=1,size <span class="k">do</span>
+		number_of_consecutive_bits = 0
+		last_bit_blank = <span class="k">nil</span>
+		<span class="k">for</span> x = 1,size <span class="k">do</span>
+			is_blank = matrix[x][y] < 0
+			<span class="k">if</span> last_bit_blank == is_blank <span class="k">then</span>
+				number_of_consecutive_bits = number_of_consecutive_bits + 1
+			<span class="k">else</span>
+				<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+					penalty1 = penalty1 + number_of_consecutive_bits - 2
+				<span class="k">end</span>
+				number_of_consecutive_bits = 1
+			<span class="k">end</span>
+			last_bit_blank = is_blank
+		<span class="k">end</span>
+		<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+			penalty1 = penalty1 + number_of_consecutive_bits - 2
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="c">-- 2: Block of modules in same color
+</span>	<span class="c">-- -----------------------------------
+</span>	<span class="c">-- Blocksize = m × n  -&gt; 3 × (m-1) × (n-1)
+</span>	<span class="k">for</span> x=1,size - 1 <span class="k">do</span>
+		<span class="k">for</span> y=1,size - 1 <span class="k">do</span>
+			<span class="k">if</span> (matrix[x][y] < 0 <span class="o">and</span> matrix[x+1][y] < 0 <span class="o">and</span> matrix[x][y+1] < 0 <span class="o">and</span> matrix[x+1][y+1] < 0) <span class="o">or</span> (matrix[x][y] > 0 <span class="o">and</span> matrix[x+1][y] > 0 <span class="o">and</span> matrix[x][y+1] > 0 <span class="o">and</span> matrix[x+1][y+1] > 0) <span class="k">then</span>
+				penalty2 = penalty2 + 3
+			<span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+
+	<span class="c">-- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
+</span>	<span class="c">-- ------------------------------------------------------------------
+</span>	<span class="c">-- Gives 40 points each
+</span>	<span class="c">-- 
+</span>	<span class="c">-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
+</span>	<span class="c">-- other sources do mention it. This is heavily inspired by zxing.
+</span>	<span class="k">for</span> x=1,size <span class="k">do</span>
+		<span class="k">for</span> y=1,size <span class="k">do</span>
+			<span class="k">if</span> (y + 6 < size <span class="o">and</span>
+				matrix[x][y] > 0 <span class="o">and</span>
+				matrix[x][y +  1] < 0 <span class="o">and</span>
+				matrix[x][y +  2] > 0 <span class="o">and</span>
+				matrix[x][y +  3] > 0 <span class="o">and</span>
+				matrix[x][y +  4] > 0 <span class="o">and</span>
+				matrix[x][y +  5] < 0 <span class="o">and</span>
+				matrix[x][y +  6] > 0 <span class="o">and</span>
+				((y + 10 < size <span class="o">and</span>
+					matrix[x][y +  7] < 0 <span class="o">and</span>
+					matrix[x][y +  8] < 0 <span class="o">and</span>
+					matrix[x][y +  9] < 0 <span class="o">and</span>
+					matrix[x][y + 10] < 0) <span class="o">or</span>
+				 (y - 4 >= 1 <span class="o">and</span>
+					matrix[x][y -  1] < 0 <span class="o">and</span>
+					matrix[x][y -  2] < 0 <span class="o">and</span>
+					matrix[x][y -  3] < 0 <span class="o">and</span>
+					matrix[x][y -  4] < 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
+			<span class="k">if</span> (x + 6 <= size <span class="o">and</span>
+				matrix[x][y] > 0 <span class="o">and</span>
+				matrix[x +  1][y] < 0 <span class="o">and</span>
+				matrix[x +  2][y] > 0 <span class="o">and</span>
+				matrix[x +  3][y] > 0 <span class="o">and</span>
+				matrix[x +  4][y] > 0 <span class="o">and</span>
+				matrix[x +  5][y] < 0 <span class="o">and</span>
+				matrix[x +  6][y] > 0 <span class="o">and</span>
+				((x + 10 <= size <span class="o">and</span>
+					matrix[x +  7][y] < 0 <span class="o">and</span>
+					matrix[x +  8][y] < 0 <span class="o">and</span>
+					matrix[x +  9][y] < 0 <span class="o">and</span>
+					matrix[x + 10][y] < 0) <span class="o">or</span>
+				 (x - 4 >= 1 <span class="o">and</span>
+					matrix[x -  1][y] < 0 <span class="o">and</span>
+					matrix[x -  2][y] < 0 <span class="o">and</span>
+					matrix[x -  3][y] < 0 <span class="o">and</span>
+					matrix[x -  4][y] < 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="c">-- 4: Proportion of dark modules in entire symbol
+</span>	<span class="c">-- ----------------------------------------------
+</span>	<span class="c">-- 50 ± (5 × k)&#37; to 50 ± (5 × (k + 1))&#37; -&gt; 10 × k
+</span>	<span class="k">local</span> dark_ratio = number_of_dark_cells / ( size * size )
+	penalty4 = math.floor(math.abs(dark_ratio * 100 - 50)) * 2
+	<span class="k">return</span> penalty1 + penalty2 + penalty3 + penalty4
+<span class="k">end</span>
+
+<span class="c">-- Create a matrix for the given parameters and calculate the penalty score.
+</span><span class="c">-- Return both (matrix and penalty)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_matrix_and_penalty</span>(version,ec_level,data,mask)
+	<span class="k">local</span> tab = prepare_matrix_with_mask(version,ec_level,mask)
+	add_data_to_matrix(tab,data,mask)
+	<span class="k">local</span> penalty = calculate_penalty(tab)
+	<span class="k">return</span> tab, penalty
+<span class="k">end</span>
+
+<span class="c">-- Return the matrix with the smallest penalty. To to this
+</span><span class="c">-- we try out the matrix for all 8 masks and determine the
+</span><span class="c">-- penalty (score) each.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_matrix_with_lowest_penalty</span>(version,ec_level,data)
+	<span class="k">local</span> tab, penalty
+	<span class="k">local</span> tab_min_penalty, min_penalty
+
+	<span class="c">-- try masks 0-7
+</span>	tab_min_penalty, min_penalty = get_matrix_and_penalty(version,ec_level,data,0)
+	<span class="k">for</span> i=1,7 <span class="k">do</span>
+		tab, penalty = get_matrix_and_penalty(version,ec_level,data,i)
+		<span class="k">if</span> penalty < min_penalty <span class="k">then</span>
+			tab_min_penalty = tab
+			min_penalty = penalty
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">return</span> tab_min_penalty
+<span class="k">end</span>
+</pre></div>
+</td>
+</tr><tr id="section-24">
+<td class="docs">
+  <div class="pilwrap">
+    <a class="pilcrow" href="#section-24">&#182;</a>
+  </div>
+  
+<p>The main function. We connect everything together. Remember from above:</p>
+
+<ol>
+    <li>Determine version, ec level and mode (=encoding) for codeword</li>
+    <li>Encode data</li>
+    <li>Arrange data and calculate error correction code</li>
+    <li>Generate 8 matrices with different masks and calculate the penalty</li>
+    <li>Return qrcode with least penalty</li>
+</ol>
+
+
+</td>
+<td class="code">
+  <div class="highlight"><pre><span class="c">-- If ec_level or mode is given, use the ones for generating the qrcode. (mode is not implemented yet)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">qrcode</span>( str, ec_level, mode )
+	<span class="k">local</span> arranged_data, version, ec_level, data_raw, mode, len_bitstring
+	version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str)
+	data_raw = data_raw .. len_bitstring
+	data_raw = data_raw .. encode_data(str,mode)
+	data_raw = add_pad_data(version,ec_level,data_raw)
+	arranged_data = arrange_codewords_and_calculate_ec(version,ec_level,data_raw)
+	<span class="k">if</span> math.mod(#arranged_data,8) ~= 0 <span class="k">then</span>
+		<span class="k">return</span> <span class="k">false</span>, string.format(<span class="s">"Arranged data &#37;&#37; 8 != 0: data length = &#37;d, mod 8 = &#37;d"</span>,#arranged_data, math.mod(#arranged_data,8))
+	<span class="k">end</span>
+	arranged_data = arranged_data .. string.rep(<span class="s">"0"</span>,remainder[version])
+	<span class="k">local</span> tab = get_matrix_with_lowest_penalty(version,ec_level,arranged_data)
+	<span class="k">return</span> <span class="k">true</span>, tab
+<span class="k">end</span>
+
+
+<span class="k">if</span> testing <span class="k">then</span>
+	<span class="k">return</span> {
+		encode_string_numeric = encode_string_numeric,
+		encode_string_ascii = encode_string_ascii,
+		qrcode = qrcode,
+		binary = binary,
+		get_mode = get_mode,
+		get_length = get_length,
+		add_pad_data = add_pad_data,
+		get_generator_polynome_adjusted = get_generator_polynome_adjusted,
+		get_matrix = get_matrix,
+		get_pixel_with_mask = get_pixel_with_mask,
+		print_pattern = print_pattern,
+		get_version_eclevel_mode_bistringlength = get_version_eclevel_mode_bistringlength,
+		remainder = remainder,
+		get_capacity_remainder = get_capacity_remainder,
+		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
+		calculate_error_correction = calculate_error_correction,
+		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
+	}
+<span class="k">end</span>
+
+<span class="k">return</span> {
+	qrcode = qrcode
+}
+</pre></div>
+</td>
+</tr></tbody>
+    </table>
+  </div>
+</body>
+</html>
