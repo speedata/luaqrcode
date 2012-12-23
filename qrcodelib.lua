@@ -1246,6 +1246,7 @@ if testing then
 		get_capacity_remainder = get_capacity_remainder,
 		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
 		calculate_error_correction = calculate_error_correction,
+		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
 	}
 end
 
