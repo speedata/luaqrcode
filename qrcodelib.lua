@@ -7,14 +7,14 @@
 -- 
 -- Redistribution and use in source and binary forms, with or without
 -- modification, are permitted provided that the following conditions are met:
---     * Redistributions of source code must retain the above copyright
---       notice, this list of conditions and the following disclaimer.
---     * Redistributions in binary form must reproduce the above copyright
---       notice, this list of conditions and the following disclaimer in the
---       documentation and/or other materials provided with the distribution.
---     * Neither the name of the <organization> nor the
---       names of its contributors may be used to endorse or promote products
---       derived from this software without specific prior written permission.
+--	 * Redistributions of source code must retain the above copyright
+--	   notice, this list of conditions and the following disclaimer.
+--	 * Redistributions in binary form must reproduce the above copyright
+--	   notice, this list of conditions and the following disclaimer in the
+--	   documentation and/or other materials provided with the distribution.
+--	 * Neither the name of the <organization> nor the
+--	   names of its contributors may be used to endorse or promote products
+--	   derived from this software without specific prior written permission.
 -- 
 -- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 -- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -50,7 +50,7 @@ local bit = require("bit")
 local function binary(x,digits)
   local s=string.format("%o",x)
   local a={["0"]="000",["1"]="001", ["2"]="010",["3"]="011",
-           ["4"]="100",["5"]="101", ["6"]="110",["7"]="111"}
+		   ["4"]="100",["5"]="101", ["6"]="110",["7"]="111"}
   s=string.gsub(s,"(.)",function (d) return a[d] end)
   -- remove leading 0s
   s = string.gsub(s,"^0*(.*)$","%1")
@@ -112,7 +112,7 @@ end
 -- The capacity (number of codewords) of each version (1-40) for error correction levels 1-4 (LMQH).
 -- The higher the ec level, the lower the capacity of the version. Taken from spec, tables 7-11.
 local capacity = {
-  {  19,   16,   13,    9},{  34,   28,   22,   16},{  55,   44,   34,   26},{  80,   64,   48,   36},
+  {  19,   16,   13,	9},{  34,   28,   22,   16},{  55,   44,   34,   26},{  80,   64,   48,   36},
   { 108,   86,   62,   46},{ 136,  108,   76,   60},{ 156,  124,   88,   66},{ 194,  154,  110,   86},
   { 232,  182,  132,  100},{ 274,  216,  154,  122},{ 324,  254,  180,  140},{ 370,  290,  206,  158},
   { 428,  334,  244,  180},{ 461,  365,  261,  197},{ 523,  415,  295,  223},{ 589,  453,  325,  253},
@@ -142,9 +142,9 @@ local function get_version_eclevel(len,mode,requested_ec_level)
 	local maxec_level = 1
 	for ec_level=1,4 do
 		if requested_ec_level == nil or ec_level >= requested_ec_level then
-		    for version=1,#capacity do
-		    	bits = capacity[version][ec_level] * 8
-		    	bits = bits - 4 -- the mode indicator
+			for version=1,#capacity do
+				bits = capacity[version][ec_level] * 8
+				bits = bits - 4 -- the mode indicator
 				if version < 10 then
 					digits = tab[1][local_mode]
 				elseif version < 27 then
@@ -169,7 +169,7 @@ local function get_version_eclevel(len,mode,requested_ec_level)
 					end
 					break
 				end
-		    end
+			end
 		end
 	end
 	return minversion, maxec_level
@@ -230,12 +230,12 @@ end
 --- **Binary**: take one octet and encode it in 8 bits
 
 local asciitbl = {
-          -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  -- 0x01-0x0f
-      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  -- 0x10-0x1f
-      36, -1, -1, -1, 37, 38, -1, -1, -1, -1, 39, 40, -1, 41, 42, 43,  -- 0x20-0x2f
-      0,   1,  2,  3,  4,  5,  6,  7,  8,  9, 44, -1, -1, -1, -1, -1,  -- 0x30-0x3f
-      -1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  -- 0x40-0x4f
-      25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, -1, -1, -1, -1, -1,  -- 0x50-0x5f
+	    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  -- 0x01-0x0f
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  -- 0x10-0x1f
+	36, -1, -1, -1, 37, 38, -1, -1, -1, -1, 39, 40, -1, 41, 42, 43,  -- 0x20-0x2f
+	 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 44, -1, -1, -1, -1, -1,  -- 0x30-0x3f
+	-1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  -- 0x40-0x4f
+	25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, -1, -1, -1, -1, -1,  -- 0x50-0x5f
   }
 
 -- Return a binary representation of the numeric string `str`. This must contain only digits 0-9.
@@ -262,15 +262,15 @@ local function encode_string_ascii(str)
 	local int
 	local b1, b2
 	string.gsub(str,"..?",function(a)
-	    if #a == 2 then
-	    	b1 = asciitbl[string.byte(string.sub(a,1,1))]
-	    	b2 = asciitbl[string.byte(string.sub(a,2,2))]
-	    	int = b1 * 45 + b2
-	    	bitstring = bitstring .. binary(int,11)
-	    else
-	    	int = asciitbl[string.byte(a)]
-	    	bitstring = bitstring .. binary(int,6)
-	    end
+		if #a == 2 then
+			b1 = asciitbl[string.byte(string.sub(a,1,1))]
+			b2 = asciitbl[string.byte(string.sub(a,2,2))]
+			int = b1 * 45 + b2
+			bitstring = bitstring .. binary(int,11)
+		else
+			int = asciitbl[string.byte(a)]
+			bitstring = bitstring .. binary(int,6)
+		end
 	  end)
 	return bitstring
 end
@@ -554,7 +554,7 @@ local ecblocks = {
   {{  7,{146,116,15},  7,{147,117,15}},   { 21,{73,45,14},  7,{74,46,14}},   {  1,{53,23,15}, 37,{54,24,15}},   { 19, {45,15,15}, 26,{46,16,15}}},
   {{  5,{145,115,15}, 10,{146,116,15}},   { 19,{75,47,14}, 10,{76,48,14}},   { 15,{54,24,15}, 25,{55,25,15}},   { 23, {45,15,15}, 25,{46,16,15}}},
   {{ 13,{145,115,15},  3,{146,116,15}},   {  2,{74,46,14}, 29,{75,47,14}},   { 42,{54,24,15},  1,{55,25,15}},   { 23, {45,15,15}, 28,{46,16,15}}},
-  {{ 17,{145,115,15}                 },   { 10,{74,46,14}, 23,{75,47,14}},   { 10,{54,24,15}, 35,{55,25,15}},   { 19, {45,15,15}, 35,{46,16,15}}},
+  {{ 17,{145,115,15}            	 },   { 10,{74,46,14}, 23,{75,47,14}},   { 10,{54,24,15}, 35,{55,25,15}},   { 19, {45,15,15}, 35,{46,16,15}}},
   {{ 17,{145,115,15},  1,{146,116,15}},   { 14,{74,46,14}, 21,{75,47,14}},   { 29,{54,24,15}, 19,{55,25,15}},   { 11, {45,15,15}, 46,{46,16,15}}},
   {{ 13,{145,115,15},  6,{146,116,15}},   { 14,{74,46,14}, 23,{75,47,14}},   { 44,{54,24,15},  7,{55,25,15}},   { 59, {46,16,15},  1,{47,17,15}}},
   {{ 12,{151,121,15},  7,{152,122,15}},   { 12,{75,47,14}, 26,{76,48,14}},   { 39,{54,24,15}, 14,{55,25,15}},   { 22, {45,15,15}, 41,{46,16,15}}},
@@ -595,10 +595,10 @@ local remainder = {0, 7, 7, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 4
 --- `2, {33,11,11},  2,{34,12,11}` for entry [5][4]. This means we take two blocks with 11 codewords
 --- and two blocks with 12 codewords, and two blocks with 33 - 11 = 22 ec codes and another
 --- two blocks with 34 - 12 = 22 ec codes. 
----     Block 1: D1  D2  D3  ... D11
----     Block 2: D12 D13 D14 ... D22
----     Block 3: D23 D24 D25 ... D33 D34
----     Block 4: D35 D36 D37 ... D45 D46
+---	     Block 1: D1  D2  D3  ... D11
+---	     Block 2: D12 D13 D14 ... D22
+---	     Block 3: D23 D24 D25 ... D33 D34
+---	     Block 4: D35 D36 D37 ... D45 D46
 --- Then we place the data like this in the matrix: D1, D12, D23, D35, D2, D13, D24, D36 ... D45, D34, D46.  The same goes
 --- with error correction codes.
 
@@ -671,11 +671,11 @@ end
 --- dimensional field where the numbers determine which pixel is blank or not.
 ---
 --- The following code is used for our matrix:
----      0 = not in use yet, 
----     -2 = blank by mandatory pattern, 
----      2 = black by mandatory pattern, 
----     -1 = blank by data, 
----      1 = black by data
+---	     0 = not in use yet, 
+---	    -2 = blank by mandatory pattern, 
+---	     2 = black by mandatory pattern, 
+---	    -1 = blank by data, 
+---	     1 = black by data
 ---
 --- 
 --- To prepare the _empty_, we add positioning, alingment and timing patters.
@@ -916,15 +916,15 @@ end
 
 --- Finally we come to the place where we need to put the calculated data (remember step 3?) into the qr code.
 --- We do this for each mask. BTW speaking of mask, this is what we find in the spec:
----     Mask Pattern Reference   Condition
----     000                       (y + x) mod 2 = 0
----     001                       y mod 2 = 0
----     010                       x mod 3 = 0
----     011                       (y + x) mod 3 = 0
----     100                       ((y div 2) + (x div 3)) mod 2 = 0
----     101                       (y x) mod 2 + (y x) mod 3 = 0
----     110                       ((y x) mod 2 + (y x) mod 3) mod 2 = 0
----     111                       ((y x) mod 3 + (y+x) mod 2) mod 2 = 0
+---	     Mask Pattern Reference   Condition
+---	     000                      (y + x) mod 2 = 0
+---	     001                      y mod 2 = 0
+---	     010                      x mod 3 = 0
+---	     011                      (y + x) mod 3 = 0
+---	     100                      ((y div 2) + (x div 3)) mod 2 = 0
+---	     101                      (y x) mod 2 + (y x) mod 3 = 0
+---	     110                      ((y x) mod 2 + (y x) mod 3) mod 2 = 0
+---	     111                      ((y x) mod 3 + (y+x) mod 2) mod 2 = 0
 
 -- Return 1 (black) or -1 (blank) depending on the mask, value and position. 
 -- Parameter mask is 0-7 (-1 for 'no mask'). x and y are 1-based coordinates,
@@ -1131,41 +1131,41 @@ local function calculate_penalty(matrix)
 	for x=1,size do
 		for y=1,size do
 			if (y + 6 < size and
-            	matrix[x][y] > 0 and
-            	matrix[x][y +  1] < 0 and
-            	matrix[x][y +  2] > 0 and
-            	matrix[x][y +  3] > 0 and
-            	matrix[x][y +  4] > 0 and
-            	matrix[x][y +  5] < 0 and
-            	matrix[x][y +  6] > 0 and
-            	((y + 10 < size and
-            	    matrix[x][y +  7] < 0 and
-            	    matrix[x][y +  8] < 0 and
-            	    matrix[x][y +  9] < 0 and
-            	    matrix[x][y + 10] < 0) or
-            	 (y - 4 >= 1 and
-            	    matrix[x][y -  1] < 0 and
-            	    matrix[x][y -  2] < 0 and
-            	    matrix[x][y -  3] < 0 and
-            	    matrix[x][y -  4] < 0))) then penalty3 = penalty3 + 40 end
-        	if (x + 6 <= size and
-        	    matrix[x][y] > 0 and
-        	    matrix[x +  1][y] < 0 and
-        	    matrix[x +  2][y] > 0 and
-        	    matrix[x +  3][y] > 0 and
-        	    matrix[x +  4][y] > 0 and
-        	    matrix[x +  5][y] < 0 and
-        	    matrix[x +  6][y] > 0 and
-        	    ((x + 10 <= size and
-        	        matrix[x +  7][y] < 0 and
-        	        matrix[x +  8][y] < 0 and
-        	        matrix[x +  9][y] < 0 and
-        	        matrix[x + 10][y] < 0) or
-        	     (x - 4 >= 1 and
-        	        matrix[x -  1][y] < 0 and
-        	        matrix[x -  2][y] < 0 and
-        	        matrix[x -  3][y] < 0 and
-        	        matrix[x -  4][y] < 0))) then penalty3 = penalty3 + 40 end
+				matrix[x][y] > 0 and
+				matrix[x][y +  1] < 0 and
+				matrix[x][y +  2] > 0 and
+				matrix[x][y +  3] > 0 and
+				matrix[x][y +  4] > 0 and
+				matrix[x][y +  5] < 0 and
+				matrix[x][y +  6] > 0 and
+				((y + 10 < size and
+					matrix[x][y +  7] < 0 and
+					matrix[x][y +  8] < 0 and
+					matrix[x][y +  9] < 0 and
+					matrix[x][y + 10] < 0) or
+				 (y - 4 >= 1 and
+					matrix[x][y -  1] < 0 and
+					matrix[x][y -  2] < 0 and
+					matrix[x][y -  3] < 0 and
+					matrix[x][y -  4] < 0))) then penalty3 = penalty3 + 40 end
+			if (x + 6 <= size and
+				matrix[x][y] > 0 and
+				matrix[x +  1][y] < 0 and
+				matrix[x +  2][y] > 0 and
+				matrix[x +  3][y] > 0 and
+				matrix[x +  4][y] > 0 and
+				matrix[x +  5][y] < 0 and
+				matrix[x +  6][y] > 0 and
+				((x + 10 <= size and
+					matrix[x +  7][y] < 0 and
+					matrix[x +  8][y] < 0 and
+					matrix[x +  9][y] < 0 and
+					matrix[x + 10][y] < 0) or
+				 (x - 4 >= 1 and
+					matrix[x -  1][y] < 0 and
+					matrix[x -  2][y] < 0 and
+					matrix[x -  3][y] < 0 and
+					matrix[x -  4][y] < 0))) then penalty3 = penalty3 + 40 end
 		end
 	end
 	-- 4: Proportion of dark modules in entire symbol
