@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
 
-qrcodelib = dofile("qrcodelib.lua")
+qrencode = dofile("qrencode.lua")
 
 local function matrix_to_string( tab )
   str_tab = {}

@@ -1,2 +1,2 @@
 doc:
-	lua locco/locco.lua qrcodelib.lua
+	lua locco/locco.lua qrencode.lua

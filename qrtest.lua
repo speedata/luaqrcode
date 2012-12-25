@@ -16,7 +16,7 @@ end
 testing=true
 
 
-local qrcode        = dofile("qrcodelib.lua")
+local qrcode        = dofile("qrencode.lua")
 local bit           = require("bit")
 local tab
 str = "HELLO WORLD"
