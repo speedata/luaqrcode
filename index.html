@@ -33,19 +33,19 @@
         <h3>Welcome to the “Pure Lua QR Code library”.</h3>
         <img src="images/qrcode.gif" alt="qrcode containing link to the github project page">
 
-<p>This repository contains one main file: <code>qrcodelib.lua</code> that generates the best QR Code for the given string.</p>
+<p>This repository contains one main file: <code>qrencode.lua</code> that generates the best QR Code for the given string.</p>
 
-<p>You probably only need the files <code>qrcodelib.lua</code> and <code>bit.lua</code> to use it efficiently.</p>
+<p>You probably only need the files <code>qrencode.lua</code> and <code>bit.lua</code> to use it efficiently.</p>
 
 <h3>Source code</h3>
-<p>You find the (looco) documented source code <a href="docs/qrcodelib.html" title="qrcodelib source code">here</a>.</p>
+<p>You find the (looco) documented source code <a href="docs/qrencode.html" title="qrencode source code">here</a>.</p>
 
 <h3>Usage</h3>
 <p>See the file <code>qrcode.lua</code> for sample code. Basically you do this:</p>
 <pre>
-qrcodelib = dofile("qrcodelib.lua")
+qrencode = dofile("qrencode.lua")
 
-local ok, tab_or_message = qrcodelib.qrcode(arg[1])
+local ok, tab_or_message = qrencode.qrcode(arg[1])
 if not ok then
     print(tab_or_message)
 end
