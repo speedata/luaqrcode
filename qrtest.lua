@@ -17,7 +17,6 @@ testing=true
 
 
 local qrcode        = dofile("qrencode.lua")
-local bit           = require("bit")
 local tab
 str = "HELLO WORLD"
 assert_equal(qrcode.get_mode("0101"),           1,"get_encoding_byte 1")
@@ -40,8 +39,8 @@ assert_equal(tab[24],0,"get_generator_polynominal_adjusted 24")
 
 tab = qrcode.convert_bitstring_to_bytes("00100000010110110000101101111000110100010111001011011100010011010100001101000000111011000001000111101100")
 assert_equal(tab[1],32,"convert_bitstring_to_bytes")
-assert_equal(bit.bxor(141,43), 166,"bit.xor")
-assert_equal(bit.bxor(179,0), 179,"bit.xor")
+assert_equal(qrcode.bit_xor(141,43), 166,"bit_xor")
+assert_equal(qrcode.bit_xor(179,0), 179,"bit_xor")
 
 -- local hello_world_msg_with_ec = "0010000001011011000010110111100011010001011100101101110001001101010000110100000011101100000100011110110010101000010010000001011001010010110110010011011010011100000000000010111000001111101101000111101000010000"
 
