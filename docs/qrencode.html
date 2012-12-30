@@ -63,7 +63,6 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
 </span><span class="c">-- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 </span><span class="c">-- SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 </span>
-<span class="k">local</span> bit = <span class="nt">require</span>(<span class="s">"bit"</span>)
 </pre></div>
 </td>
 </tr><tr id="section-2">
@@ -105,6 +104,100 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
 </td>
 <td class="code">
   <div class="highlight"><pre>
+<span class="c">-- To calculate xor we need to do that bitwise. This helper table speeds up the num-to-bit
+</span><span class="c">-- part a bit (no pun intended)
+</span><span class="k">local</span> cclxvi = {[0] = {0,0,0,0,0,0,0,0}, {1,0,0,0,0,0,0,0}, {0,1,0,0,0,0,0,0}, {1,1,0,0,0,0,0,0},
+{0,0,1,0,0,0,0,0}, {1,0,1,0,0,0,0,0}, {0,1,1,0,0,0,0,0}, {1,1,1,0,0,0,0,0},
+{0,0,0,1,0,0,0,0}, {1,0,0,1,0,0,0,0}, {0,1,0,1,0,0,0,0}, {1,1,0,1,0,0,0,0},
+{0,0,1,1,0,0,0,0}, {1,0,1,1,0,0,0,0}, {0,1,1,1,0,0,0,0}, {1,1,1,1,0,0,0,0},
+{0,0,0,0,1,0,0,0}, {1,0,0,0,1,0,0,0}, {0,1,0,0,1,0,0,0}, {1,1,0,0,1,0,0,0},
+{0,0,1,0,1,0,0,0}, {1,0,1,0,1,0,0,0}, {0,1,1,0,1,0,0,0}, {1,1,1,0,1,0,0,0},
+{0,0,0,1,1,0,0,0}, {1,0,0,1,1,0,0,0}, {0,1,0,1,1,0,0,0}, {1,1,0,1,1,0,0,0},
+{0,0,1,1,1,0,0,0}, {1,0,1,1,1,0,0,0}, {0,1,1,1,1,0,0,0}, {1,1,1,1,1,0,0,0},
+{0,0,0,0,0,1,0,0}, {1,0,0,0,0,1,0,0}, {0,1,0,0,0,1,0,0}, {1,1,0,0,0,1,0,0},
+{0,0,1,0,0,1,0,0}, {1,0,1,0,0,1,0,0}, {0,1,1,0,0,1,0,0}, {1,1,1,0,0,1,0,0},
+{0,0,0,1,0,1,0,0}, {1,0,0,1,0,1,0,0}, {0,1,0,1,0,1,0,0}, {1,1,0,1,0,1,0,0},
+{0,0,1,1,0,1,0,0}, {1,0,1,1,0,1,0,0}, {0,1,1,1,0,1,0,0}, {1,1,1,1,0,1,0,0},
+{0,0,0,0,1,1,0,0}, {1,0,0,0,1,1,0,0}, {0,1,0,0,1,1,0,0}, {1,1,0,0,1,1,0,0},
+{0,0,1,0,1,1,0,0}, {1,0,1,0,1,1,0,0}, {0,1,1,0,1,1,0,0}, {1,1,1,0,1,1,0,0},
+{0,0,0,1,1,1,0,0}, {1,0,0,1,1,1,0,0}, {0,1,0,1,1,1,0,0}, {1,1,0,1,1,1,0,0},
+{0,0,1,1,1,1,0,0}, {1,0,1,1,1,1,0,0}, {0,1,1,1,1,1,0,0}, {1,1,1,1,1,1,0,0},
+{0,0,0,0,0,0,1,0}, {1,0,0,0,0,0,1,0}, {0,1,0,0,0,0,1,0}, {1,1,0,0,0,0,1,0},
+{0,0,1,0,0,0,1,0}, {1,0,1,0,0,0,1,0}, {0,1,1,0,0,0,1,0}, {1,1,1,0,0,0,1,0},
+{0,0,0,1,0,0,1,0}, {1,0,0,1,0,0,1,0}, {0,1,0,1,0,0,1,0}, {1,1,0,1,0,0,1,0},
+{0,0,1,1,0,0,1,0}, {1,0,1,1,0,0,1,0}, {0,1,1,1,0,0,1,0}, {1,1,1,1,0,0,1,0},
+{0,0,0,0,1,0,1,0}, {1,0,0,0,1,0,1,0}, {0,1,0,0,1,0,1,0}, {1,1,0,0,1,0,1,0},
+{0,0,1,0,1,0,1,0}, {1,0,1,0,1,0,1,0}, {0,1,1,0,1,0,1,0}, {1,1,1,0,1,0,1,0},
+{0,0,0,1,1,0,1,0}, {1,0,0,1,1,0,1,0}, {0,1,0,1,1,0,1,0}, {1,1,0,1,1,0,1,0},
+{0,0,1,1,1,0,1,0}, {1,0,1,1,1,0,1,0}, {0,1,1,1,1,0,1,0}, {1,1,1,1,1,0,1,0},
+{0,0,0,0,0,1,1,0}, {1,0,0,0,0,1,1,0}, {0,1,0,0,0,1,1,0}, {1,1,0,0,0,1,1,0},
+{0,0,1,0,0,1,1,0}, {1,0,1,0,0,1,1,0}, {0,1,1,0,0,1,1,0}, {1,1,1,0,0,1,1,0},
+{0,0,0,1,0,1,1,0}, {1,0,0,1,0,1,1,0}, {0,1,0,1,0,1,1,0}, {1,1,0,1,0,1,1,0},
+{0,0,1,1,0,1,1,0}, {1,0,1,1,0,1,1,0}, {0,1,1,1,0,1,1,0}, {1,1,1,1,0,1,1,0},
+{0,0,0,0,1,1,1,0}, {1,0,0,0,1,1,1,0}, {0,1,0,0,1,1,1,0}, {1,1,0,0,1,1,1,0},
+{0,0,1,0,1,1,1,0}, {1,0,1,0,1,1,1,0}, {0,1,1,0,1,1,1,0}, {1,1,1,0,1,1,1,0},
+{0,0,0,1,1,1,1,0}, {1,0,0,1,1,1,1,0}, {0,1,0,1,1,1,1,0}, {1,1,0,1,1,1,1,0},
+{0,0,1,1,1,1,1,0}, {1,0,1,1,1,1,1,0}, {0,1,1,1,1,1,1,0}, {1,1,1,1,1,1,1,0},
+{0,0,0,0,0,0,0,1}, {1,0,0,0,0,0,0,1}, {0,1,0,0,0,0,0,1}, {1,1,0,0,0,0,0,1},
+{0,0,1,0,0,0,0,1}, {1,0,1,0,0,0,0,1}, {0,1,1,0,0,0,0,1}, {1,1,1,0,0,0,0,1},
+{0,0,0,1,0,0,0,1}, {1,0,0,1,0,0,0,1}, {0,1,0,1,0,0,0,1}, {1,1,0,1,0,0,0,1},
+{0,0,1,1,0,0,0,1}, {1,0,1,1,0,0,0,1}, {0,1,1,1,0,0,0,1}, {1,1,1,1,0,0,0,1},
+{0,0,0,0,1,0,0,1}, {1,0,0,0,1,0,0,1}, {0,1,0,0,1,0,0,1}, {1,1,0,0,1,0,0,1},
+{0,0,1,0,1,0,0,1}, {1,0,1,0,1,0,0,1}, {0,1,1,0,1,0,0,1}, {1,1,1,0,1,0,0,1},
+{0,0,0,1,1,0,0,1}, {1,0,0,1,1,0,0,1}, {0,1,0,1,1,0,0,1}, {1,1,0,1,1,0,0,1},
+{0,0,1,1,1,0,0,1}, {1,0,1,1,1,0,0,1}, {0,1,1,1,1,0,0,1}, {1,1,1,1,1,0,0,1},
+{0,0,0,0,0,1,0,1}, {1,0,0,0,0,1,0,1}, {0,1,0,0,0,1,0,1}, {1,1,0,0,0,1,0,1},
+{0,0,1,0,0,1,0,1}, {1,0,1,0,0,1,0,1}, {0,1,1,0,0,1,0,1}, {1,1,1,0,0,1,0,1},
+{0,0,0,1,0,1,0,1}, {1,0,0,1,0,1,0,1}, {0,1,0,1,0,1,0,1}, {1,1,0,1,0,1,0,1},
+{0,0,1,1,0,1,0,1}, {1,0,1,1,0,1,0,1}, {0,1,1,1,0,1,0,1}, {1,1,1,1,0,1,0,1},
+{0,0,0,0,1,1,0,1}, {1,0,0,0,1,1,0,1}, {0,1,0,0,1,1,0,1}, {1,1,0,0,1,1,0,1},
+{0,0,1,0,1,1,0,1}, {1,0,1,0,1,1,0,1}, {0,1,1,0,1,1,0,1}, {1,1,1,0,1,1,0,1},
+{0,0,0,1,1,1,0,1}, {1,0,0,1,1,1,0,1}, {0,1,0,1,1,1,0,1}, {1,1,0,1,1,1,0,1},
+{0,0,1,1,1,1,0,1}, {1,0,1,1,1,1,0,1}, {0,1,1,1,1,1,0,1}, {1,1,1,1,1,1,0,1},
+{0,0,0,0,0,0,1,1}, {1,0,0,0,0,0,1,1}, {0,1,0,0,0,0,1,1}, {1,1,0,0,0,0,1,1},
+{0,0,1,0,0,0,1,1}, {1,0,1,0,0,0,1,1}, {0,1,1,0,0,0,1,1}, {1,1,1,0,0,0,1,1},
+{0,0,0,1,0,0,1,1}, {1,0,0,1,0,0,1,1}, {0,1,0,1,0,0,1,1}, {1,1,0,1,0,0,1,1},
+{0,0,1,1,0,0,1,1}, {1,0,1,1,0,0,1,1}, {0,1,1,1,0,0,1,1}, {1,1,1,1,0,0,1,1},
+{0,0,0,0,1,0,1,1}, {1,0,0,0,1,0,1,1}, {0,1,0,0,1,0,1,1}, {1,1,0,0,1,0,1,1},
+{0,0,1,0,1,0,1,1}, {1,0,1,0,1,0,1,1}, {0,1,1,0,1,0,1,1}, {1,1,1,0,1,0,1,1},
+{0,0,0,1,1,0,1,1}, {1,0,0,1,1,0,1,1}, {0,1,0,1,1,0,1,1}, {1,1,0,1,1,0,1,1},
+{0,0,1,1,1,0,1,1}, {1,0,1,1,1,0,1,1}, {0,1,1,1,1,0,1,1}, {1,1,1,1,1,0,1,1},
+{0,0,0,0,0,1,1,1}, {1,0,0,0,0,1,1,1}, {0,1,0,0,0,1,1,1}, {1,1,0,0,0,1,1,1},
+{0,0,1,0,0,1,1,1}, {1,0,1,0,0,1,1,1}, {0,1,1,0,0,1,1,1}, {1,1,1,0,0,1,1,1},
+{0,0,0,1,0,1,1,1}, {1,0,0,1,0,1,1,1}, {0,1,0,1,0,1,1,1}, {1,1,0,1,0,1,1,1},
+{0,0,1,1,0,1,1,1}, {1,0,1,1,0,1,1,1}, {0,1,1,1,0,1,1,1}, {1,1,1,1,0,1,1,1},
+{0,0,0,0,1,1,1,1}, {1,0,0,0,1,1,1,1}, {0,1,0,0,1,1,1,1}, {1,1,0,0,1,1,1,1},
+{0,0,1,0,1,1,1,1}, {1,0,1,0,1,1,1,1}, {0,1,1,0,1,1,1,1}, {1,1,1,0,1,1,1,1},
+{0,0,0,1,1,1,1,1}, {1,0,0,1,1,1,1,1}, {0,1,0,1,1,1,1,1}, {1,1,0,1,1,1,1,1},
+{0,0,1,1,1,1,1,1}, {1,0,1,1,1,1,1,1}, {0,1,1,1,1,1,1,1}, {1,1,1,1,1,1,1,1}}
+
+<span class="c">-- Return a number that is the result of interpreting the table tbl (msb first)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">tbl_to_number</span>(tbl)
+	<span class="k">local</span> n = #tbl
+	<span class="k">local</span> rslt = 0
+	<span class="k">local</span> power = 1
+	<span class="k">for</span> i = 1, n <span class="k">do</span>
+		rslt = rslt + tbl[i]*power
+		power = power*2
+	<span class="k">end</span>
+	<span class="k">return</span> rslt
+<span class="k">end</span>
+
+<span class="c">-- Calculate bitwise xor of bytes m and n. 0 &lt;= m,n &lt;= 256.
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">bit_xor</span>(m, n)
+	<span class="k">local</span> tbl_m = cclxvi[m]
+	<span class="k">local</span> tbl_n = cclxvi[n]
+	<span class="k">local</span> tbl = {}
+	<span class="k">for</span> i = 1, 8 <span class="k">do</span>
+		<span class="k">if</span>(tbl_m[i] ~= tbl_n[i]) <span class="k">then</span>
+			tbl[i] = 1
+		<span class="k">else</span>
+			tbl[i] = 0
+		<span class="k">end</span>
+	<span class="k">end</span>
+	<span class="k">return</span> tbl_to_number(tbl)
+<span class="k">end</span>
+
 <span class="c">-- Return the binary representation of the number x with the width of `digits`.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">binary</span>(x,digits)
   <span class="k">local</span> s=string.format(<span class="s">"&#37;o"</span>,x)
@@ -646,7 +739,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 	
 		tmp = {}
 		<span class="k">for</span> i=highest_exponent,0,-1 <span class="k">do</span>
-			tmp[i] = bit.bxor(gp_int[i],mp_int[i])
+			tmp[i] = bit_xor(gp_int[i],mp_int[i])
 		<span class="k">end</span>
 		<span class="c">-- remove leading 0's
 </span>		he = highest_exponent
@@ -1393,26 +1486,22 @@ reading the code.</p>
 			penalty1 = penalty1 + number_of_consecutive_bits - 2
 		<span class="k">end</span>
 	<span class="k">end</span>
-	<span class="c">-- 2: Block of modules in same color
-</span>	<span class="c">-- -----------------------------------
-</span>	<span class="c">-- Blocksize = m × n  -&gt; 3 × (m-1) × (n-1)
-</span>	<span class="k">for</span> x=1,size - 1 <span class="k">do</span>
-		<span class="k">for</span> y=1,size - 1 <span class="k">do</span>
-			<span class="k">if</span> (matrix[x][y] < 0 <span class="o">and</span> matrix[x+1][y] < 0 <span class="o">and</span> matrix[x][y+1] < 0 <span class="o">and</span> matrix[x+1][y+1] < 0) <span class="o">or</span> (matrix[x][y] > 0 <span class="o">and</span> matrix[x+1][y] > 0 <span class="o">and</span> matrix[x][y+1] > 0 <span class="o">and</span> matrix[x+1][y+1] > 0) <span class="k">then</span>
+	<span class="k">for</span> x=1,size <span class="k">do</span>
+		<span class="k">for</span> y=1,size <span class="k">do</span>
+			<span class="c">-- 2: Block of modules in same color
+</span>			<span class="c">-- -----------------------------------
+</span>			<span class="c">-- Blocksize = m × n  -&gt; 3 × (m-1) × (n-1)
+</span>			<span class="k">if</span> (y < size - 1) <span class="o">and</span> ( x < size - 1) <span class="o">and</span> ( (matrix[x][y] < 0 <span class="o">and</span> matrix[x+1][y] < 0 <span class="o">and</span> matrix[x][y+1] < 0 <span class="o">and</span> matrix[x+1][y+1] < 0) <span class="o">or</span> (matrix[x][y] > 0 <span class="o">and</span> matrix[x+1][y] > 0 <span class="o">and</span> matrix[x][y+1] > 0 <span class="o">and</span> matrix[x+1][y+1] > 0) ) <span class="k">then</span>
 				penalty2 = penalty2 + 3
 			<span class="k">end</span>
-		<span class="k">end</span>
-	<span class="k">end</span>
 
-	<span class="c">-- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
-</span>	<span class="c">-- ------------------------------------------------------------------
-</span>	<span class="c">-- Gives 40 points each
-</span>	<span class="c">-- 
-</span>	<span class="c">-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
-</span>	<span class="c">-- other sources do mention it. This is heavily inspired by zxing.
-</span>	<span class="k">for</span> x=1,size <span class="k">do</span>
-		<span class="k">for</span> y=1,size <span class="k">do</span>
-			<span class="k">if</span> (y + 6 < size <span class="o">and</span>
+			<span class="c">-- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
+</span>			<span class="c">-- ------------------------------------------------------------------
+</span>			<span class="c">-- Gives 40 points each
+</span>			<span class="c">--
+</span>			<span class="c">-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
+</span>			<span class="c">-- other sources do mention it. This is heavily inspired by zxing.
+</span>			<span class="k">if</span> (y + 6 < size <span class="o">and</span>
 				matrix[x][y] > 0 <span class="o">and</span>
 				matrix[x][y +  1] < 0 <span class="o">and</span>
 				matrix[x][y +  2] > 0 <span class="o">and</span>
@@ -1542,6 +1631,7 @@ reading the code.</p>
 		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
 		calculate_error_correction = calculate_error_correction,
 		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
+		bit_xor = bit_xor,
 	}
 <span class="k">end</span>
 
