@@ -11,7 +11,6 @@ local function matrix_to_string( tab )
     str_tab[i] = "\27[1;47m  \27[0m"
   end
   for x=1,#tab do
-     -- str_tab[x] = str_tab[x] .. "X"
     for y=1,#tab do
       if tab[x][y] > 0 then
         str_tab[y + 1] = str_tab[y + 1] .. "\27[40m  \27[0m"

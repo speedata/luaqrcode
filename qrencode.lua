@@ -1111,25 +1111,21 @@ local function calculate_penalty(matrix)
 			penalty1 = penalty1 + number_of_consecutive_bits - 2
 		end
 	end
-	-- 2: Block of modules in same color
-	-- -----------------------------------
-	-- Blocksize = m × n  -> 3 × (m-1) × (n-1)
-	for x=1,size - 1 do
-		for y=1,size - 1 do
-			if (matrix[x][y] < 0 and matrix[x+1][y] < 0 and matrix[x][y+1] < 0 and matrix[x+1][y+1] < 0) or (matrix[x][y] > 0 and matrix[x+1][y] > 0 and matrix[x][y+1] > 0 and matrix[x+1][y+1] > 0) then
-				penalty2 = penalty2 + 3
-			end
-		end
-	end
-
-	-- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
-	-- ------------------------------------------------------------------
-	-- Gives 40 points each
-	-- 
-	-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
-	-- other sources do mention it. This is heavily inspired by zxing.
 	for x=1,size do
 		for y=1,size do
+			-- 2: Block of modules in same color
+			-- -----------------------------------
+			-- Blocksize = m × n  -> 3 × (m-1) × (n-1)
+			if (y < size - 1) and ( x < size - 1) and ( (matrix[x][y] < 0 and matrix[x+1][y] < 0 and matrix[x][y+1] < 0 and matrix[x+1][y+1] < 0) or (matrix[x][y] > 0 and matrix[x+1][y] > 0 and matrix[x][y+1] > 0 and matrix[x+1][y+1] > 0) ) then
+				penalty2 = penalty2 + 3
+			end
+
+			-- 3: 1:1:3:1:1 ratio (dark:light:dark:light:dark) pattern in row/column
+			-- ------------------------------------------------------------------
+			-- Gives 40 points each
+			--
+			-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
+			-- other sources do mention it. This is heavily inspired by zxing.
 			if (y + 6 < size and
 				matrix[x][y] > 0 and
 				matrix[x][y +  1] < 0 and
