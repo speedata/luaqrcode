@@ -40,7 +40,7 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
 <td class="code">
   <div class="highlight"><pre><span class="c">-- Copyright (c) 2012, Patrick Gundlach
 </span><span class="c">-- All rights reserved.
-</span><span class="c">-- 
+</span><span class="c">--
 </span><span class="c">-- Redistribution and use in source and binary forms, with or without
 </span><span class="c">-- modification, are permitted provided that the following conditions are met:
 </span><span class="c">--	 * Redistributions of source code must retain the above copyright
@@ -51,7 +51,7 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
 </span><span class="c">--	 * Neither the name of the &lt;organization&gt; nor the
 </span><span class="c">--	   names of its contributors may be used to endorse or promote products
 </span><span class="c">--	   derived from this software without specific prior written permission.
-</span><span class="c">-- 
+</span><span class="c">--
 </span><span class="c">-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 </span><span class="c">-- ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 </span><span class="c">-- WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -206,8 +206,9 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
   s=string.gsub(s,<span class="s">"(.)"</span>,<span class="k">function</span> (d) <span class="k">return</span> a[d] <span class="k">end</span>)
   <span class="c">-- remove leading 0s
 </span>  s = string.gsub(s,<span class="s">"^0*(.*)$"</span>,<span class="s">"&#37;1"</span>)
-  <span class="k">local</span> fmtstring = string.format(<span class="s">"&#37;&#37;0&#37;ds"</span>,digits)
-  <span class="k">return</span> string.format(fmtstring,s)
+  <span class="k">local</span> fmtstring = string.format(<span class="s">"&#37;&#37;&#37;ds"</span>,digits)
+  <span class="k">local</span> ret = string.format(fmtstring,s)
+  <span class="k">return</span> string.gsub(ret,<span class="s">" "</span>,<span class="s">"0"</span>)
 <span class="k">end</span>
 
 <span class="c">-- A small helper function for add_typeinfo_to_matrix() and add_version_information()
@@ -248,7 +249,7 @@ the input data (the mode to be used), the requested error correction level
 		<span class="k">return</span> 1
 	<span class="k">elseif</span> string.match(str,<span class="s">"^[0-9A-Z $&#37;&#37;*./:+-]+$"</span>) <span class="k">then</span>
 		<span class="k">return</span> 2
-	<span class="k">else</span> 
+	<span class="k">else</span>
 		<span class="k">return</span> 4
 	<span class="k">end</span>
 	<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"never reached"</span>)
@@ -358,7 +359,7 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 	<span class="k">return</span> minversion, maxec_level
 <span class="k">end</span>
 
-<span class="c">-- Return a bit string of 0s and 1s that includes the length of the code string. 
+<span class="c">-- Return a bit string of 0s and 1s that includes the length of the code string.
 </span><span class="c">-- The modes are numeric = 1, alphanumeric = 2, binary = 4, and japanese = 8
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_length</span>(str,version,mode)
 	<span class="k">local</span> i = mode
@@ -437,8 +438,8 @@ possible to split the QR code to handle multiple modes, but we don't do that.</p
 We already chose the encoding (a.k.a. mode) in the first step, so we need to apply the mode to the
 codeword.</p>
 
-<p><strong>Numeric</strong>: take three digits and encode them in 10 bits <br/>
-<strong>Alphanumeric</strong>: take two characters and encode them in 11 bits <br/>
+<p><strong>Numeric</strong>: take three digits and encode them in 10 bits
+<strong>Alphanumeric</strong>: take two characters and encode them in 11 bits
 <strong>Binary</strong>: take one octet and encode it in 8 bits</p>
 
 
@@ -471,7 +472,7 @@ codeword.</p>
 	<span class="k">return</span> bitstring
 <span class="k">end</span>
 
-<span class="c">-- Return a binary representation of the alphanumeric string `str`. This must contain only 
+<span class="c">-- Return a binary representation of the alphanumeric string `str`. This must contain only
 </span><span class="c">-- digits 0-9, uppercase letters A-Z, space and the following chars: $&#37;*./:+-.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">encode_string_ascii</span>(str)
 	<span class="k">local</span> bitstring = <span class="s">""</span>
@@ -515,7 +516,7 @@ codeword.</p>
 	<span class="k">end</span>
 <span class="k">end</span>
 
-<span class="c">-- Encoding the codeword is not enough. We need to make sure that 
+<span class="c">-- Encoding the codeword is not enough. We need to make sure that
 </span><span class="c">-- the length of the binary string is equal to the number of codewords of the version.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_pad_data</span>(version,ec_level,data)
 	<span class="k">local</span> count_to_pad, missing_digits
@@ -524,11 +525,11 @@ codeword.</p>
 	<span class="k">if</span> count_to_pad > 0 <span class="k">then</span>
 		data = data .. string.rep(<span class="s">"0"</span>,count_to_pad)
 	<span class="k">end</span>
-	<span class="k">if</span> math.mod(#data,8) ~= 0 <span class="k">then</span>
-		missing_digits = 8 - math.mod(#data,8)
+	<span class="k">if</span> math.fmod(#data,8) ~= 0 <span class="k">then</span>
+		missing_digits = 8 - math.fmod(#data,8)
 		data = data .. string.rep(<span class="s">"0"</span>,missing_digits)
 	<span class="k">end</span>
-	<span class="nt">assert</span>(math.mod(#data,8) == 0)
+	<span class="nt">assert</span>(math.fmod(#data,8) == 0)
 	<span class="c">-- add "11101100" and "00010001" until enough data
 </span>	<span class="k">while</span> #data < cpty <span class="k">do</span>
 		data = data .. <span class="s">"11101100"</span>
@@ -592,7 +593,7 @@ polynomial division. Find a math book from school and follow the code here :)</p
 	162,  89, 178, 121, 242, 249, 239, 195, 155,  43,  86, 172,  69, 138,   9,  18,
 	 36,  72, 144,  61, 122, 244, 245, 247, 243, 251, 235, 203, 139,  11,  22,  44,
 	 88, 176, 125, 250, 233, 207, 131,  27,  54, 108, 216, 173,  71, 142,   1
-}	
+}
 
 <span class="k">local</span> int_alpha = {
 	[0] = 0,
@@ -612,7 +613,7 @@ polynomial division. Find a math book from school and follow the code here :)</p
 	161,  59,  82,  41, 157,  85, 170, 251,  96, 134, 177, 187, 204,  62,  90, 203,
 	 89,  95, 176, 156, 169, 160,  81,  11, 245,  22, 235, 122, 117,  44, 215,  79,
 	174, 213, 233, 230, 231, 173, 232, 116, 214, 244, 234, 168,  80,  88, 175
-} 
+}
 
 <span class="c">-- We only need the polynomial generators for block sizes 7, 10, 13, 15, 16, 17, 18, 20, 22, 24, 26, 28, and 30. Version
 </span><span class="c">-- 2 of the qr codes don't need larger ones (as opposed to version 1). The table has the format x^1*ɑ^21 + x^2*a^102 ...
@@ -686,7 +687,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 	<span class="k">return</span> new_tab
 <span class="k">end</span>
 
-<span class="c">-- That's the heart of the error correction calculation. 
+<span class="c">-- That's the heart of the error correction calculation.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">calculate_error_correction</span>(data,num_ec_codewords)
 	<span class="k">local</span> mp
 	<span class="k">if</span> <span class="nt">type</span>(data)==<span class="s">"string"</span> <span class="k">then</span>
@@ -718,13 +719,13 @@ We could have created the table programatically, but I like fixed tables.</p>
 		gp_alpha = get_generator_polynominal_adjusted(num_ec_codewords,highest_exponent)
 
 		<span class="c">-- Multiply generator polynomial by first coefficient of the above polynomial
-</span>	
-		<span class="c">-- take the highest exponent from the message polynom (alpha) and add 
+</span>
+		<span class="c">-- take the highest exponent from the message polynom (alpha) and add
 </span>		<span class="c">-- it to the generator polynom
 </span>		<span class="k">local</span> exp = mp_alpha[highest_exponent]
 		<span class="k">for</span> i=highest_exponent,highest_exponent - num_ec_codewords,-1 <span class="k">do</span>
 			<span class="k">if</span> gp_alpha[i] + exp > 255 <span class="k">then</span>
-				gp_alpha[i] = math.mod(gp_alpha[i] + exp,255)
+				gp_alpha[i] = math.fmod(gp_alpha[i] + exp,255)
 			<span class="k">else</span>
 				gp_alpha[i] = gp_alpha[i] + exp
 			<span class="k">end</span>
@@ -732,11 +733,11 @@ We could have created the table programatically, but I like fixed tables.</p>
 		<span class="k">for</span> i=highest_exponent - num_ec_codewords - 1,0,-1 <span class="k">do</span>
 			gp_alpha[i] = 0
 		<span class="k">end</span>
-	
+
 		gp_int = convert_to_int(gp_alpha)
 		mp_int = convert_to_int(mp_alpha)
-	
-	
+
+
 		tmp = {}
 		<span class="k">for</span> i=highest_exponent,0,-1 <span class="k">do</span>
 			tmp[i] = bit_xor(gp_int[i],mp_int[i])
@@ -782,7 +783,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 </span><span class="c">-- ec level. Each entry has two or four fields, the odd files are the number of repetitions for the
 </span><span class="c">-- folowing block info. The first entry of the block is the total number of codewords in the block,
 </span><span class="c">-- the second entry is the number of data codewords. The third is not important.
-</span><span class="k">local</span> ecblocks = { 
+</span><span class="k">local</span> ecblocks = {
   {{  1,{ 26, 19, 2}                 },   {  1,{26,16, 4}},                  {  1,{26,13, 6}},                  {  1, {26, 9, 8}               }},
   {{  1,{ 44, 34, 4}                 },   {  1,{44,28, 8}},                  {  1,{44,22,11}},                  {  1, {44,16,14}               }},
   {{  1,{ 70, 55, 7}                 },   {  1,{70,44,13}},                  {  2,{35,17, 9}},                  {  2, {35,13,11}               }},
@@ -823,7 +824,7 @@ We could have created the table programatically, but I like fixed tables.</p>
   {{  4,{152,122,15}, 18,{153,123,15}},   { 13,{74,46,14}, 32,{75,47,14}},   { 48,{54,24,15}, 14,{55,25,15}},   { 42, {45,15,15}, 32,{46,16,15}}},
   {{ 20,{147,117,15},  4,{148,118,15}},   { 40,{75,47,14},  7,{76,48,14}},   { 43,{54,24,15}, 22,{55,25,15}},   { 10, {45,15,15}, 67,{46,16,15}}},
   {{ 19,{148,118,15},  6,{149,119,15}},   { 18,{75,47,14}, 31,{76,48,14}},   { 34,{54,24,15}, 34,{55,25,15}},   { 20, {45,15,15}, 61,{46,16,15}}}
-} 
+}
 
 <span class="c">-- The bits that must be 0 if the version does fill the complete matrix.
 </span><span class="c">-- Example: for version 1, no bits need to be added after arranging the data, for version 2 we need to add 7 bits at the end.
@@ -847,7 +848,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 </span><span class="c">-- 	else
 </span><span class="c">-- 		size = size - 31
 </span><span class="c">-- 	end
-</span><span class="c">-- 	return math.floor(size/8),math.mod(size,8)
+</span><span class="c">-- 	return math.floor(size/8),math.fmod(size,8)
 </span><span class="c">-- end
 </span>
 </pre></div>
@@ -861,7 +862,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 <p>Example: Version 5-H has four data and four error correction blocks. The table above lists
 <code>2, {33,11,11},  2,{34,12,11}</code> for entry [5][4]. This means we take two blocks with 11 codewords
 and two blocks with 12 codewords, and two blocks with 33 - 11 = 22 ec codes and another
-two blocks with 34 - 12 = 22 ec codes. </p>
+two blocks with 34 - 12 = 22 ec codes.</p>
 <pre><code> Block 1: D1  D2  D3  ... D11
  Block 2: D12 D13 D14 ... D22
  Block 3: D23 D24 D25 ... D33 D34
@@ -948,10 +949,10 @@ few predefined areas that must be black or blank. We encode the matrix with a tw
 dimensional field where the numbers determine which pixel is blank or not.</p>
 
 <p>The following code is used for our matrix:</p>
-<pre><code> 0 = not in use yet, 
--2 = blank by mandatory pattern, 
- 2 = black by mandatory pattern, 
--1 = blank by data, 
+<pre><code> 0 = not in use yet,
+-2 = blank by mandatory pattern,
+ 2 = black by mandatory pattern,
+-1 = blank by data,
  1 = black by data
 </code></pre>
 
@@ -1036,14 +1037,14 @@ dimensional field where the numbers determine which pixel is blank or not.</p>
 	line = 7
 	col = 9
 	<span class="k">for</span> i=col,#tab_x - 8 <span class="k">do</span>
-		<span class="k">if</span> math.mod(i,2) == 1 <span class="k">then</span>
+		<span class="k">if</span> math.fmod(i,2) == 1 <span class="k">then</span>
 			tab_x[i][line] = 2
 		<span class="k">else</span>
 			tab_x[i][line] = -2
 		<span class="k">end</span>
 	<span class="k">end</span>
 	<span class="k">for</span> i=col,#tab_x - 8 <span class="k">do</span>
-		<span class="k">if</span> math.mod(i,2) == 1 <span class="k">then</span>
+		<span class="k">if</span> math.fmod(i,2) == 1 <span class="k">then</span>
 			tab_x[line][i] = 2
 		<span class="k">else</span>
 			tab_x[line][i] = -2
@@ -1161,7 +1162,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 	{ [-1]= <span class="s">"111111111111111"</span>, [0] = <span class="s">"001011010001001"</span>, <span class="s">"001001110111110"</span>, <span class="s">"001110011100111"</span>, <span class="s">"001100111010000"</span>, <span class="s">"000011101100010"</span>, <span class="s">"000001001010101"</span>, <span class="s">"000110100001100"</span>, <span class="s">"000100000111011"</span> }
 }
 
-<span class="c">-- The typeinfo is a mixture of mask and ec level information and is 
+<span class="c">-- The typeinfo is a mixture of mask and ec level information and is
 </span><span class="c">-- added twice to the qr code, one horizontal, one vertical.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_typeinfo_to_matrix</span>( matrix,ec_level,mask )
 	<span class="k">local</span> ec_mask_type = typeinfo[ec_level][mask]
@@ -1214,7 +1215,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 	start_y = 1
 	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
 		bit = string.sub(bitstring,i,i)
-		x = start_x + math.mod(i - 1,3)
+		x = start_x + math.fmod(i - 1,3)
 		y = start_y + math.floor( (i - 1) / 3 )
 		fill_matrix_position(matrix,bit,x,y)
 	<span class="k">end</span>
@@ -1225,7 +1226,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
 		bit = string.sub(bitstring,i,i)
 		x = start_x + math.floor( (i - 1) / 3 )
-		y = start_y + math.mod(i - 1,3)
+		y = start_y + math.fmod(i - 1,3)
 		fill_matrix_position(matrix,bit,x,y)
 	<span class="k">end</span>
 <span class="k">end</span>
@@ -1288,7 +1289,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 </td>
 <td class="code">
   <div class="highlight"><pre>
-<span class="c">-- Return 1 (black) or -1 (blank) depending on the mask, value and position. 
+<span class="c">-- Return 1 (black) or -1 (blank) depending on the mask, value and position.
 </span><span class="c">-- Parameter mask is 0-7 (-1 for 'no mask'). x and y are 1-based coordinates,
 </span><span class="c">-- 1,1 = upper left. tonumber(value) must be 0 or 1.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_pixel_with_mask</span>( mask, x,y,value )
@@ -1299,21 +1300,21 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 </span>	<span class="k">if</span> mask == -1 <span class="k">then</span>
 		<span class="c">-- ignore, no masking applied
 </span>	<span class="k">elseif</span> mask == 0 <span class="k">then</span>
-		<span class="k">if</span> math.mod(x + y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(x + y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 1 <span class="k">then</span>
-		<span class="k">if</span> math.mod(y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 2 <span class="k">then</span>
-		<span class="k">if</span> math.mod(x,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(x,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 3 <span class="k">then</span>
-		<span class="k">if</span> math.mod(x + y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(x + y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 4 <span class="k">then</span>
-		<span class="k">if</span> math.mod(math.floor(y / 2) + math.floor(x / 3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(math.floor(y / 2) + math.floor(x / 3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 5 <span class="k">then</span>
-		<span class="k">if</span> math.mod(x * y,2) + math.mod(x * y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(x * y,2) + math.fmod(x * y,3) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 6 <span class="k">then</span>
-		<span class="k">if</span> math.mod(math.mod(x * y,2) + math.mod(x * y,3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(math.fmod(x * y,2) + math.fmod(x * y,3),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 7 <span class="k">then</span>
-		<span class="k">if</span> math.mod(math.mod(x * y,3) + math.mod(x + y,2),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
+		<span class="k">if</span> math.fmod(math.fmod(x * y,3) + math.fmod(x + y,2),2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">else</span>
 		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"This can't happen (mask must be &lt;= 7)"</span>)
 	<span class="k">end</span>
@@ -1445,7 +1446,7 @@ reading the code.</p>
 		last_bit_blank = <span class="k">nil</span>
 		<span class="k">for</span> y = 1,size <span class="k">do</span>
 			<span class="k">if</span> matrix[x][y] > 0 <span class="k">then</span>
-				<span class="c">-- small optimization: this is for penalty 4 
+				<span class="c">-- small optimization: this is for penalty 4
 </span>				number_of_dark_cells = number_of_dark_cells + 1
 				is_blank = <span class="k">false</span>
 			<span class="k">else</span>
@@ -1603,8 +1604,8 @@ reading the code.</p>
 	data_raw = data_raw .. encode_data(str,mode)
 	data_raw = add_pad_data(version,ec_level,data_raw)
 	arranged_data = arrange_codewords_and_calculate_ec(version,ec_level,data_raw)
-	<span class="k">if</span> math.mod(#arranged_data,8) ~= 0 <span class="k">then</span>
-		<span class="k">return</span> <span class="k">false</span>, string.format(<span class="s">"Arranged data &#37;&#37; 8 != 0: data length = &#37;d, mod 8 = &#37;d"</span>,#arranged_data, math.mod(#arranged_data,8))
+	<span class="k">if</span> math.fmod(#arranged_data,8) ~= 0 <span class="k">then</span>
+		<span class="k">return</span> <span class="k">false</span>, string.format(<span class="s">"Arranged data &#37;&#37; 8 != 0: data length = &#37;d, mod 8 = &#37;d"</span>,#arranged_data, math.fmod(#arranged_data,8))
 	<span class="k">end</span>
 	arranged_data = arranged_data .. string.rep(<span class="s">"0"</span>,remainder[version])
 	<span class="k">local</span> tab = get_matrix_with_lowest_penalty(version,ec_level,arranged_data)
