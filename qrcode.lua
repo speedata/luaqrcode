@@ -3,40 +3,106 @@
 
 qrencode = dofile("qrencode.lua")
 
--- Return string representation of the qr code matrix
-local function matrix_to_string( tab )
-  -- Add one row at the top and at the bottom
-  str_tab = {}
-  for i=1,#tab + 2 do
-    str_tab[i] = "\27[1;47m  \27[0m"
-  end
-  for x=1,#tab do
-    for y=1,#tab do
-      if tab[x][y] > 0 then
-        str_tab[y + 1] = str_tab[y + 1] .. "\27[40m  \27[0m"
-      elseif tab[x][y] < 0 then
-        str_tab[y + 1] = str_tab[y + 1] .. "\27[1;47m  \27[0m"
-      else
-        str_tab[y + 1] = str_tab[y + 1] .. " X"
-      end
-    end
-  end
-  str_tab[1] =  str_tab[1] .. string.rep("\27[1;47m  \27[0m",#tab)
-  str_tab[#tab + 2] =  str_tab[#tab + 2] .. string.rep("\27[1;47m  \27[0m",#tab)
-  for i=1,#tab + 2 do
-    str_tab[i] = str_tab[i] .. "\27[1;47m  \27[0m"
-  end
 
-  return table.concat(str_tab,"\n")
+-- padding: number of padding rows/columns around QR code
+local function matrix_to_string( tab, padding,padding_char,white_pixel,black_pixel )
+    local str_tab = {} -- hold each row of the qr code in a cell
+
+    -- Add (padding) blank columns at the left of the matrix
+    -- (left of each row string), inserting an extra (padding)
+    -- rows at the top and bottom
+    for i=1,#tab + 2*padding do
+        start_padding = string.rep(padding_char,padding)
+        str_tab[i] = start_padding
+    end
+
+    for x=1,#tab do
+        for y=1,#tab do
+            if tab[x][y] > 0 then
+                -- using y + padding because we added (padding) blank columns at the left for each string in str_tab array
+                str_tab[y + padding] = str_tab[y + padding] .. black_pixel
+            elseif tab[x][y] < 0 then
+                str_tab[y + padding] = str_tab[y + padding] .. white_pixel
+            else
+                str_tab[y + padding] = str_tab[y + padding] .. " X"
+            end
+        end
+    end
+
+    for i=1,padding do
+        -- fills in padding rows at top of matrix
+        str_tab[i] =  str_tab[i] .. string.rep(padding_char,#tab)
+        -- fills in padding rows at bottom of matrix
+        str_tab[#tab + padding + i] =  str_tab[#tab + padding + i] .. string.rep(padding_char,#tab)
+    end
+
+  -- Add (padding) blank columns to right of matrix (to the end of each row string)
+    for i=1,#tab + 2*padding do
+        end_padding = string.rep(padding_char,padding)
+        str_tab[i] = str_tab[i] .. end_padding
+    end
+
+    return str_tab
 end
 
-if arg[1] then
-	local ok, tab_or_message = qrencode.qrcode(arg[1])
+
+local use_ansi = false
+local padding = 1
+local padding_char
+local black_pixel = "X"
+local white_pixel = " "
+local codeword
+
+while true do
+    if arg[1] == nil then
+        break
+    elseif arg[1] == "-h" or arg[1] == "--help" then
+        codeword = nil
+        break
+    elseif arg[1] == "-a" then
+        use_ansi = true
+    elseif arg[1] == "-p" then
+        padding = arg[2]
+        table.remove(arg,2)
+    elseif arg[1] == "-c" then
+        padding_char = arg[2]
+        table.remove(arg,2)
+    elseif arg[1] == "-b" then
+        black_pixel = arg[2]
+        table.remove(arg,2)
+    elseif arg[1] == "-w" then
+        white_pixel = arg[2]
+        table.remove(arg,2)
+    else
+        codeword = arg[1]
+    end
+    table.remove(arg,1)
+end
+
+if use_ansi then
+    black_pixel = "\27[40m  \27[0m"
+    white_pixel = "\27[1;47m  \27[0m"
+end
+
+padding_char = padding_char or white_pixel
+
+if codeword then
+	local ok, tab_or_message = qrencode.qrcode(codeword)
 	if not ok then
 		print(tab_or_message)
 	else
-		print(matrix_to_string(tab_or_message))
+        local rows
+        rows = matrix_to_string(tab_or_message,padding,padding_char,white_pixel,black_pixel)
+        for i=1,#rows do  -- prints each "row" of the QR code on a line, one at a time
+            print(rows[i])
+        end
 	end
 else
-	print(arg[0] .. " <contents>")
+    print("Usage:")
+	print(arg[0] .. " [-a] [-p <num>] [-c <char>] [-b <char>] [-w <char>]  <contents>")
+    print("-a       : use ansi colors (don't do this on a dos box)")
+    print("-p <num> : use padding of width <num> (default: 1)")
+    print("-b <char>: use <char> for black pixel (default: 'X')")
+    print("-w <char>: use <char> for white pixel (default: ' ')")
+    print("-c <char>: use <char> for padding (default: the white pixel)")
 end
