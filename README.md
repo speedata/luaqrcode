@@ -1,2 +1,5 @@
-See the homepage at https://github.com/speedata/luaqrcode
+See the homepage at http://speedata.github.io/luaqrcode/
 for more information.
+
+Special thanks to
+  Wes Garrison
