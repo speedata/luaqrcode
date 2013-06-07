@@ -91,19 +91,19 @@ end
 padding_char = padding_char or white_pixel
 
 if codeword then
-	local ok, tab_or_message = qrencode.qrcode(codeword)
-	if not ok then
-		print(tab_or_message)
-	else
+    local ok, tab_or_message = qrencode.qrcode(codeword)
+    if not ok then
+        print(tab_or_message)
+    else
         local rows
         rows = matrix_to_string(tab_or_message,padding,padding_char,white_pixel,black_pixel)
         for i=1,#rows do  -- prints each "row" of the QR code on a line, one at a time
             print(rows[i])
         end
-	end
+    end
 else
     print("Usage:")
-	print(arg[0] .. " [-a] [-p <num>] [-c <char>] [-b <char>] [-w <char>]  <contents>")
+    print(arg[0] .. " [-a] [-p <num>] [-c <char>] [-b <char>] [-w <char>]  <contents>")
     print("-a       : use ansi colors (don't do this on a dos box)")
     print("-p <num> : use padding of width <num> (default: 1)")
     print("-b <char>: use <char> for black pixel (default: 'X')")
