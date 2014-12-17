@@ -318,22 +318,22 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 	<span class="k">elseif</span> mode == 8 <span class="k">then</span>
 		local_mode = 4
 	<span class="k">end</span>
-	<span class="nt">assert</span>( local_mode <= 4 )
+	<span class="nt">assert</span>( local_mode &lt;= 4 )
 
 	<span class="k">local</span> bytes, bits, digits, modebits, c
 	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
 	<span class="k">local</span> minversion = 40
 	<span class="k">local</span> maxec_level = 1
 	<span class="k">for</span> ec_level=1,4 <span class="k">do</span>
-		<span class="k">if</span> requested_ec_level == <span class="k">nil</span> <span class="o">or</span> ec_level >= requested_ec_level <span class="k">then</span>
+		<span class="k">if</span> requested_ec_level == <span class="k">nil</span> <span class="o">or</span> ec_level &gt;= requested_ec_level <span class="k">then</span>
 			<span class="k">for</span> version=1,#capacity <span class="k">do</span>
 				bits = capacity[version][ec_level] * 8
 				bits = bits - 4 <span class="c">-- the mode indicator
-</span>				<span class="k">if</span> version < 10 <span class="k">then</span>
+</span>				<span class="k">if</span> version &lt; 10 <span class="k">then</span>
 					digits = tab[1][local_mode]
-				<span class="k">elseif</span> version < 27 <span class="k">then</span>
+				<span class="k">elseif</span> version &lt; 27 <span class="k">then</span>
 					digits = tab[2][local_mode]
-				<span class="k">elseif</span> version <= 40 <span class="k">then</span>
+				<span class="k">elseif</span> version &lt;= 40 <span class="k">then</span>
 					digits = tab[3][local_mode]
 				<span class="k">end</span>
 				modebits = bits - digits
@@ -346,8 +346,8 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 				<span class="k">else</span>
 					c = math.floor(modebits * 1 / 13)
 				<span class="k">end</span>
-				<span class="k">if</span> c >= len <span class="k">then</span>
-					<span class="k">if</span> version <= minversion <span class="k">then</span>
+				<span class="k">if</span> c &gt;= len <span class="k">then</span>
+					<span class="k">if</span> version &lt;= minversion <span class="k">then</span>
 						minversion = version
 						maxec_level = ec_level
 					<span class="k">end</span>
@@ -368,14 +368,14 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 	<span class="k">elseif</span> mode == 8 <span class="k">then</span>
 		i = 4
 	<span class="k">end</span>
-	<span class="nt">assert</span>( i <= 4 )
+	<span class="nt">assert</span>( i &lt;= 4 )
 	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
 	<span class="k">local</span> digits
-	<span class="k">if</span> version < 10 <span class="k">then</span>
+	<span class="k">if</span> version &lt; 10 <span class="k">then</span>
 		digits = tab[1][i]
-	<span class="k">elseif</span> version < 27 <span class="k">then</span>
+	<span class="k">elseif</span> version &lt; 27 <span class="k">then</span>
 		digits = tab[2][i]
-	<span class="k">elseif</span> version <= 40 <span class="k">then</span>
+	<span class="k">elseif</span> version &lt;= 40 <span class="k">then</span>
 		digits = tab[3][i]
 	<span class="k">else</span>
 		<span class="nt">assert</span>(<span class="k">false</span>, <span class="s">"get_length, version &gt; 40 not supported"</span>)
@@ -522,7 +522,7 @@ codeword.</p>
 	<span class="k">local</span> count_to_pad, missing_digits
 	<span class="k">local</span> cpty = capacity[version][ec_level] * 8
 	count_to_pad = math.min(4,cpty - #data)
-	<span class="k">if</span> count_to_pad > 0 <span class="k">then</span>
+	<span class="k">if</span> count_to_pad &gt; 0 <span class="k">then</span>
 		data = data .. string.rep(<span class="s">"0"</span>,count_to_pad)
 	<span class="k">end</span>
 	<span class="k">if</span> math.fmod(#data,8) ~= 0 <span class="k">then</span>
@@ -531,9 +531,9 @@ codeword.</p>
 	<span class="k">end</span>
 	<span class="nt">assert</span>(math.fmod(#data,8) == 0)
 	<span class="c">-- add "11101100" and "00010001" until enough data
-</span>	<span class="k">while</span> #data < cpty <span class="k">do</span>
+</span>	<span class="k">while</span> #data &lt; cpty <span class="k">do</span>
 		data = data .. <span class="s">"11101100"</span>
-		<span class="k">if</span> #data < cpty <span class="k">then</span>
+		<span class="k">if</span> #data &lt; cpty <span class="k">then</span>
 			data = data .. <span class="s">"00010001"</span>
 		<span class="k">end</span>
 	<span class="k">end</span>
@@ -715,7 +715,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 
 	mp_alpha = convert_to_alpha(mp_int)
 
-	<span class="k">while</span> highest_exponent >= num_ec_codewords <span class="k">do</span>
+	<span class="k">while</span> highest_exponent &gt;= num_ec_codewords <span class="k">do</span>
 		gp_alpha = get_generator_polynominal_adjusted(num_ec_codewords,highest_exponent)
 
 		<span class="c">-- Multiply generator polynomial by first coefficient of the above polynomial
@@ -724,7 +724,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 </span>		<span class="c">-- it to the generator polynom
 </span>		<span class="k">local</span> exp = mp_alpha[highest_exponent]
 		<span class="k">for</span> i=highest_exponent,highest_exponent - num_ec_codewords,-1 <span class="k">do</span>
-			<span class="k">if</span> gp_alpha[i] + exp > 255 <span class="k">then</span>
+			<span class="k">if</span> gp_alpha[i] + exp &gt; 255 <span class="k">then</span>
 				gp_alpha[i] = math.fmod(gp_alpha[i] + exp,255)
 			<span class="k">else</span>
 				gp_alpha[i] = gp_alpha[i] + exp
@@ -746,7 +746,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 </span>		he = highest_exponent
 		<span class="k">for</span> i=he,0,-1 <span class="k">do</span>
 			<span class="c">-- We need to stop if the length of the codeword is matched
-</span>			<span class="k">if</span> i < num_ec_codewords <span class="k">then</span> <span class="k">break</span> <span class="k">end</span>
+</span>			<span class="k">if</span> i &lt; num_ec_codewords <span class="k">then</span> <span class="k">break</span> <span class="k">end</span>
 			<span class="k">if</span> tmp[i] == 0 <span class="k">then</span>
 				tmp[i] = <span class="k">nil</span>
 				highest_exponent = highest_exponent - 1
@@ -914,7 +914,7 @@ with error correction codes.</p>
 	pos = 1
 	<span class="k">repeat</span>
 		<span class="k">for</span> i=1,#datablocks <span class="k">do</span>
-			<span class="k">if</span> pos < #datablocks[i] <span class="k">then</span>
+			<span class="k">if</span> pos &lt; #datablocks[i] <span class="k">then</span>
 				arranged_data = arranged_data .. string.sub(datablocks[i],pos, pos + 7)
 			<span class="k">end</span>
 		<span class="k">end</span>
@@ -925,7 +925,7 @@ with error correction codes.</p>
 	pos = 1
 	<span class="k">repeat</span>
 		<span class="k">for</span> i=1,#ecblocks <span class="k">do</span>
-			<span class="k">if</span> pos < #ecblocks[i] <span class="k">then</span>
+			<span class="k">if</span> pos &lt; #ecblocks[i] <span class="k">then</span>
 				arranged_ec = arranged_ec .. string.sub(ecblocks[i],pos, pos + 7)
 			<span class="k">end</span>
 		<span class="k">end</span>
@@ -1205,7 +1205,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 
 <span class="c">-- Versions 7 and above need two bitfields with version information added to the code
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_version_information</span>(matrix,version)
-	<span class="k">if</span> version < 7 <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
+	<span class="k">if</span> version &lt; 7 <span class="k">then</span> <span class="k">return</span> <span class="k">end</span>
 	<span class="k">local</span> size = #matrix
 	<span class="k">local</span> bitstring = version_information[version - 6]
 	<span class="k">local</span> x,y, bit
@@ -1335,7 +1335,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 	<span class="k">local</span> ret = {}
 	<span class="k">local</span> count = 1
 	<span class="k">local</span> mode = <span class="s">"right"</span>
-	<span class="k">while</span> count <= #byte <span class="k">do</span>
+	<span class="k">while</span> count &lt;= #byte <span class="k">do</span>
 		<span class="k">if</span> mode == <span class="s">"right"</span> <span class="o">and</span> matrix[x][y] == 0 <span class="k">then</span>
 			ret[#ret + 1] = {x,y}
 			mode = <span class="s">"left"</span>
@@ -1364,7 +1364,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 				y = y + 1
 			<span class="k">end</span>
 		<span class="k">end</span>
-		<span class="k">if</span> y < 1 <span class="o">or</span> y > #matrix <span class="k">then</span>
+		<span class="k">if</span> y &lt; 1 <span class="o">or</span> y &gt; #matrix <span class="k">then</span>
 			x = x - 2
 			<span class="c">-- don't overwrite the timing pattern
 </span>			<span class="k">if</span> x == 7 <span class="k">then</span> x = 6 <span class="k">end</span>
@@ -1445,25 +1445,25 @@ reading the code.</p>
 		number_of_consecutive_bits = 0
 		last_bit_blank = <span class="k">nil</span>
 		<span class="k">for</span> y = 1,size <span class="k">do</span>
-			<span class="k">if</span> matrix[x][y] > 0 <span class="k">then</span>
+			<span class="k">if</span> matrix[x][y] &gt; 0 <span class="k">then</span>
 				<span class="c">-- small optimization: this is for penalty 4
 </span>				number_of_dark_cells = number_of_dark_cells + 1
 				is_blank = <span class="k">false</span>
 			<span class="k">else</span>
 				is_blank = <span class="k">true</span>
 			<span class="k">end</span>
-			is_blank = matrix[x][y] < 0
+			is_blank = matrix[x][y] &lt; 0
 			<span class="k">if</span> last_bit_blank == is_blank <span class="k">then</span>
 				number_of_consecutive_bits = number_of_consecutive_bits + 1
 			<span class="k">else</span>
-				<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+				<span class="k">if</span> number_of_consecutive_bits &gt;= 5 <span class="k">then</span>
 					penalty1 = penalty1 + number_of_consecutive_bits - 2
 				<span class="k">end</span>
 				number_of_consecutive_bits = 1
 			<span class="k">end</span>
 			last_bit_blank = is_blank
 		<span class="k">end</span>
-		<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+		<span class="k">if</span> number_of_consecutive_bits &gt;= 5 <span class="k">then</span>
 			penalty1 = penalty1 + number_of_consecutive_bits - 2
 		<span class="k">end</span>
 	<span class="k">end</span>
@@ -1472,18 +1472,18 @@ reading the code.</p>
 		number_of_consecutive_bits = 0
 		last_bit_blank = <span class="k">nil</span>
 		<span class="k">for</span> x = 1,size <span class="k">do</span>
-			is_blank = matrix[x][y] < 0
+			is_blank = matrix[x][y] &lt; 0
 			<span class="k">if</span> last_bit_blank == is_blank <span class="k">then</span>
 				number_of_consecutive_bits = number_of_consecutive_bits + 1
 			<span class="k">else</span>
-				<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+				<span class="k">if</span> number_of_consecutive_bits &gt;= 5 <span class="k">then</span>
 					penalty1 = penalty1 + number_of_consecutive_bits - 2
 				<span class="k">end</span>
 				number_of_consecutive_bits = 1
 			<span class="k">end</span>
 			last_bit_blank = is_blank
 		<span class="k">end</span>
-		<span class="k">if</span> number_of_consecutive_bits >= 5 <span class="k">then</span>
+		<span class="k">if</span> number_of_consecutive_bits &gt;= 5 <span class="k">then</span>
 			penalty1 = penalty1 + number_of_consecutive_bits - 2
 		<span class="k">end</span>
 	<span class="k">end</span>
@@ -1492,7 +1492,7 @@ reading the code.</p>
 			<span class="c">-- 2: Block of modules in same color
 </span>			<span class="c">-- -----------------------------------
 </span>			<span class="c">-- Blocksize = m × n  -&gt; 3 × (m-1) × (n-1)
-</span>			<span class="k">if</span> (y < size - 1) <span class="o">and</span> ( x < size - 1) <span class="o">and</span> ( (matrix[x][y] < 0 <span class="o">and</span> matrix[x+1][y] < 0 <span class="o">and</span> matrix[x][y+1] < 0 <span class="o">and</span> matrix[x+1][y+1] < 0) <span class="o">or</span> (matrix[x][y] > 0 <span class="o">and</span> matrix[x+1][y] > 0 <span class="o">and</span> matrix[x][y+1] > 0 <span class="o">and</span> matrix[x+1][y+1] > 0) ) <span class="k">then</span>
+</span>			<span class="k">if</span> (y &lt; size - 1) <span class="o">and</span> ( x &lt; size - 1) <span class="o">and</span> ( (matrix[x][y] &lt; 0 <span class="o">and</span> matrix[x+1][y] &lt; 0 <span class="o">and</span> matrix[x][y+1] &lt; 0 <span class="o">and</span> matrix[x+1][y+1] &lt; 0) <span class="o">or</span> (matrix[x][y] &gt; 0 <span class="o">and</span> matrix[x+1][y] &gt; 0 <span class="o">and</span> matrix[x][y+1] &gt; 0 <span class="o">and</span> matrix[x+1][y+1] &gt; 0) ) <span class="k">then</span>
 				penalty2 = penalty2 + 3
 			<span class="k">end</span>
 
@@ -1502,42 +1502,42 @@ reading the code.</p>
 </span>			<span class="c">--
 </span>			<span class="c">-- I have no idea why we need the extra 0000 on left or right side. The spec doesn't mention it,
 </span>			<span class="c">-- other sources do mention it. This is heavily inspired by zxing.
-</span>			<span class="k">if</span> (y + 6 < size <span class="o">and</span>
-				matrix[x][y] > 0 <span class="o">and</span>
-				matrix[x][y +  1] < 0 <span class="o">and</span>
-				matrix[x][y +  2] > 0 <span class="o">and</span>
-				matrix[x][y +  3] > 0 <span class="o">and</span>
-				matrix[x][y +  4] > 0 <span class="o">and</span>
-				matrix[x][y +  5] < 0 <span class="o">and</span>
-				matrix[x][y +  6] > 0 <span class="o">and</span>
-				((y + 10 < size <span class="o">and</span>
-					matrix[x][y +  7] < 0 <span class="o">and</span>
-					matrix[x][y +  8] < 0 <span class="o">and</span>
-					matrix[x][y +  9] < 0 <span class="o">and</span>
-					matrix[x][y + 10] < 0) <span class="o">or</span>
-				 (y - 4 >= 1 <span class="o">and</span>
-					matrix[x][y -  1] < 0 <span class="o">and</span>
-					matrix[x][y -  2] < 0 <span class="o">and</span>
-					matrix[x][y -  3] < 0 <span class="o">and</span>
-					matrix[x][y -  4] < 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
-			<span class="k">if</span> (x + 6 <= size <span class="o">and</span>
-				matrix[x][y] > 0 <span class="o">and</span>
-				matrix[x +  1][y] < 0 <span class="o">and</span>
-				matrix[x +  2][y] > 0 <span class="o">and</span>
-				matrix[x +  3][y] > 0 <span class="o">and</span>
-				matrix[x +  4][y] > 0 <span class="o">and</span>
-				matrix[x +  5][y] < 0 <span class="o">and</span>
-				matrix[x +  6][y] > 0 <span class="o">and</span>
-				((x + 10 <= size <span class="o">and</span>
-					matrix[x +  7][y] < 0 <span class="o">and</span>
-					matrix[x +  8][y] < 0 <span class="o">and</span>
-					matrix[x +  9][y] < 0 <span class="o">and</span>
-					matrix[x + 10][y] < 0) <span class="o">or</span>
-				 (x - 4 >= 1 <span class="o">and</span>
-					matrix[x -  1][y] < 0 <span class="o">and</span>
-					matrix[x -  2][y] < 0 <span class="o">and</span>
-					matrix[x -  3][y] < 0 <span class="o">and</span>
-					matrix[x -  4][y] < 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
+</span>			<span class="k">if</span> (y + 6 &lt; size <span class="o">and</span>
+				matrix[x][y] &gt; 0 <span class="o">and</span>
+				matrix[x][y +  1] &lt; 0 <span class="o">and</span>
+				matrix[x][y +  2] &gt; 0 <span class="o">and</span>
+				matrix[x][y +  3] &gt; 0 <span class="o">and</span>
+				matrix[x][y +  4] &gt; 0 <span class="o">and</span>
+				matrix[x][y +  5] &lt; 0 <span class="o">and</span>
+				matrix[x][y +  6] &gt; 0 <span class="o">and</span>
+				((y + 10 &lt; size <span class="o">and</span>
+					matrix[x][y +  7] &lt; 0 <span class="o">and</span>
+					matrix[x][y +  8] &lt; 0 <span class="o">and</span>
+					matrix[x][y +  9] &lt; 0 <span class="o">and</span>
+					matrix[x][y + 10] &lt; 0) <span class="o">or</span>
+				 (y - 4 &gt;= 1 <span class="o">and</span>
+					matrix[x][y -  1] &lt; 0 <span class="o">and</span>
+					matrix[x][y -  2] &lt; 0 <span class="o">and</span>
+					matrix[x][y -  3] &lt; 0 <span class="o">and</span>
+					matrix[x][y -  4] &lt; 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
+			<span class="k">if</span> (x + 6 &lt;= size <span class="o">and</span>
+				matrix[x][y] &gt; 0 <span class="o">and</span>
+				matrix[x +  1][y] &lt; 0 <span class="o">and</span>
+				matrix[x +  2][y] &gt; 0 <span class="o">and</span>
+				matrix[x +  3][y] &gt; 0 <span class="o">and</span>
+				matrix[x +  4][y] &gt; 0 <span class="o">and</span>
+				matrix[x +  5][y] &lt; 0 <span class="o">and</span>
+				matrix[x +  6][y] &gt; 0 <span class="o">and</span>
+				((x + 10 &lt;= size <span class="o">and</span>
+					matrix[x +  7][y] &lt; 0 <span class="o">and</span>
+					matrix[x +  8][y] &lt; 0 <span class="o">and</span>
+					matrix[x +  9][y] &lt; 0 <span class="o">and</span>
+					matrix[x + 10][y] &lt; 0) <span class="o">or</span>
+				 (x - 4 &gt;= 1 <span class="o">and</span>
+					matrix[x -  1][y] &lt; 0 <span class="o">and</span>
+					matrix[x -  2][y] &lt; 0 <span class="o">and</span>
+					matrix[x -  3][y] &lt; 0 <span class="o">and</span>
+					matrix[x -  4][y] &lt; 0))) <span class="k">then</span> penalty3 = penalty3 + 40 <span class="k">end</span>
 		<span class="k">end</span>
 	<span class="k">end</span>
 	<span class="c">-- 4: Proportion of dark modules in entire symbol
@@ -1568,7 +1568,7 @@ reading the code.</p>
 </span>	tab_min_penalty, min_penalty = get_matrix_and_penalty(version,ec_level,data,0)
 	<span class="k">for</span> i=1,7 <span class="k">do</span>
 		tab, penalty = get_matrix_and_penalty(version,ec_level,data,i)
-		<span class="k">if</span> penalty < min_penalty <span class="k">then</span>
+		<span class="k">if</span> penalty &lt; min_penalty <span class="k">then</span>
 			tab_min_penalty = tab
 			min_penalty = penalty
 		<span class="k">end</span>
