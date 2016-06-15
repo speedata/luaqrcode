@@ -499,7 +499,7 @@ end
 
 -- Return a table that has 0's in the first entries and then the alpha
 -- representation of the generator polynominal
-function get_generator_polynominal_adjusted(num_ec_codewords,highest_exponent)
+local function get_generator_polynominal_adjusted(num_ec_codewords,highest_exponent)
 	local gp_alpha = {[0]=0}
 	for i=0,highest_exponent - num_ec_codewords - 1 do
 		gp_alpha[i] = 0
@@ -1062,7 +1062,7 @@ end
 -- We need up to 8 positions in the matrix. Only the last few bits may be less then 8.
 -- The function returns a table of (up to) 8 entries with subtables where
 -- the x coordinate is the first and the y coordinate is the second entry.
-function get_next_free_positions(matrix,x,y,dir,byte)
+local function get_next_free_positions(matrix,x,y,dir,byte)
 	local ret = {}
 	local count = 1
 	local mode = "right"
@@ -1327,13 +1327,11 @@ if testing then
 		get_mode = get_mode,
 		get_length = get_length,
 		add_pad_data = add_pad_data,
-		get_generator_polynome_adjusted = get_generator_polynome_adjusted,
-		get_matrix = get_matrix,
+		get_generator_polynominal_adjusted = get_generator_polynominal_adjusted,
 		get_pixel_with_mask = get_pixel_with_mask,
-		print_pattern = print_pattern,
 		get_version_eclevel_mode_bistringlength = get_version_eclevel_mode_bistringlength,
 		remainder = remainder,
-		get_capacity_remainder = get_capacity_remainder,
+		--get_capacity_remainder = get_capacity_remainder,
 		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
 		calculate_error_correction = calculate_error_correction,
 		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
