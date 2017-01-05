@@ -323,36 +323,39 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 	<span class="k">local</span> bytes, bits, digits, modebits, c
 	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
 	<span class="k">local</span> minversion = 40
-	<span class="k">local</span> maxec_level = 1
-	<span class="k">for</span> ec_level=1,4 <span class="k">do</span>
-		<span class="k">if</span> requested_ec_level == <span class="k">nil</span> <span class="o">or</span> ec_level &gt;= requested_ec_level <span class="k">then</span>
-			<span class="k">for</span> version=1,#capacity <span class="k">do</span>
-				bits = capacity[version][ec_level] * 8
-				bits = bits - 4 <span class="c">-- the mode indicator
-</span>				<span class="k">if</span> version &lt; 10 <span class="k">then</span>
-					digits = tab[1][local_mode]
-				<span class="k">elseif</span> version &lt; 27 <span class="k">then</span>
-					digits = tab[2][local_mode]
-				<span class="k">elseif</span> version &lt;= 40 <span class="k">then</span>
-					digits = tab[3][local_mode]
+	<span class="k">local</span> maxec_level = requested_ec_level <span class="o">or</span> 1
+	<span class="k">local</span> min,max = 1, 4
+	<span class="k">if</span> requested_ec_level <span class="o">and</span> requested_ec_level &gt;= 1 <span class="o">and</span> requested_ec_level &lt;= 4 <span class="k">then</span>
+		min = requested_ec_level
+		max = requested_ec_level
+	<span class="k">end</span>
+	<span class="k">for</span> ec_level=min,max <span class="k">do</span>
+		<span class="k">for</span> version=1,#capacity <span class="k">do</span>
+			bits = capacity[version][ec_level] * 8
+			bits = bits - 4 <span class="c">-- the mode indicator
+</span>			<span class="k">if</span> version &lt; 10 <span class="k">then</span>
+				digits = tab[1][local_mode]
+			<span class="k">elseif</span> version &lt; 27 <span class="k">then</span>
+				digits = tab[2][local_mode]
+			<span class="k">elseif</span> version &lt;= 40 <span class="k">then</span>
+				digits = tab[3][local_mode]
+			<span class="k">end</span>
+			modebits = bits - digits
+			<span class="k">if</span> local_mode == 1 <span class="k">then</span> <span class="c">-- numeric
+</span>				c = math.floor(modebits * 3 / 10)
+			<span class="k">elseif</span> local_mode == 2 <span class="k">then</span> <span class="c">-- alphanumeric
+</span>				c = math.floor(modebits * 2 / 11)
+			<span class="k">elseif</span> local_mode == 3 <span class="k">then</span> <span class="c">-- binary
+</span>				c = math.floor(modebits * 1 / 8)
+			<span class="k">else</span>
+				c = math.floor(modebits * 1 / 13)
+			<span class="k">end</span>
+			<span class="k">if</span> c &gt;= len <span class="k">then</span>
+				<span class="k">if</span> version &lt;= minversion <span class="k">then</span>
+					minversion = version
+					maxec_level = ec_level
 				<span class="k">end</span>
-				modebits = bits - digits
-				<span class="k">if</span> local_mode == 1 <span class="k">then</span> <span class="c">-- numeric
-</span>					c = math.floor(modebits * 3 / 10)
-				<span class="k">elseif</span> local_mode == 2 <span class="k">then</span> <span class="c">-- alphanumeric
-</span>					c = math.floor(modebits * 2 / 11)
-				<span class="k">elseif</span> local_mode == 3 <span class="k">then</span> <span class="c">-- binary
-</span>					c = math.floor(modebits * 1 / 8)
-				<span class="k">else</span>
-					c = math.floor(modebits * 1 / 13)
-				<span class="k">end</span>
-				<span class="k">if</span> c &gt;= len <span class="k">then</span>
-					<span class="k">if</span> version &lt;= minversion <span class="k">then</span>
-						minversion = version
-						maxec_level = ec_level
-					<span class="k">end</span>
-					<span class="k">break</span>
-				<span class="k">end</span>
+				<span class="k">break</span>
 			<span class="k">end</span>
 		<span class="k">end</span>
 	<span class="k">end</span>
@@ -644,7 +647,7 @@ polynomial division. Find a math book from school and follow the code here :)</p
 
 <span class="c">-- Return a table that has 0's in the first entries and then the alpha
 </span><span class="c">-- representation of the generator polynominal
-</span><span class="k">function</span> <span class="nf">get_generator_polynominal_adjusted</span>(num_ec_codewords,highest_exponent)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_generator_polynominal_adjusted</span>(num_ec_codewords,highest_exponent)
 	<span class="k">local</span> gp_alpha = {[0]=0}
 	<span class="k">for</span> i=0,highest_exponent - num_ec_codewords - 1 <span class="k">do</span>
 		gp_alpha[i] = 0
@@ -1331,7 +1334,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 <span class="c">-- We need up to 8 positions in the matrix. Only the last few bits may be less then 8.
 </span><span class="c">-- The function returns a table of (up to) 8 entries with subtables where
 </span><span class="c">-- the x coordinate is the first and the y coordinate is the second entry.
-</span><span class="k">function</span> <span class="nf">get_next_free_positions</span>(matrix,x,y,dir,byte)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_next_free_positions</span>(matrix,x,y,dir,byte)
 	<span class="k">local</span> ret = {}
 	<span class="k">local</span> count = 1
 	<span class="k">local</span> mode = <span class="s">"right"</span>
@@ -1598,8 +1601,8 @@ reading the code.</p>
 <td class="code">
   <div class="highlight"><pre><span class="c">-- If ec_level or mode is given, use the ones for generating the qrcode. (mode is not implemented yet)
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">qrcode</span>( str, ec_level, mode )
-	<span class="k">local</span> arranged_data, version, ec_level, data_raw, mode, len_bitstring
-	version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str)
+	<span class="k">local</span> arranged_data, version, data_raw, mode, len_bitstring
+	version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str,ec_level)
 	data_raw = data_raw .. len_bitstring
 	data_raw = data_raw .. encode_data(str,mode)
 	data_raw = add_pad_data(version,ec_level,data_raw)
@@ -1622,14 +1625,12 @@ reading the code.</p>
 		get_mode = get_mode,
 		get_length = get_length,
 		add_pad_data = add_pad_data,
-		get_generator_polynome_adjusted = get_generator_polynome_adjusted,
-		get_matrix = get_matrix,
+		get_generator_polynominal_adjusted = get_generator_polynominal_adjusted,
 		get_pixel_with_mask = get_pixel_with_mask,
-		print_pattern = print_pattern,
 		get_version_eclevel_mode_bistringlength = get_version_eclevel_mode_bistringlength,
 		remainder = remainder,
-		get_capacity_remainder = get_capacity_remainder,
-		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
+		<span class="c">--get_capacity_remainder = get_capacity_remainder,
+</span>		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
 		calculate_error_correction = calculate_error_correction,
 		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
 		bit_xor = bit_xor,
