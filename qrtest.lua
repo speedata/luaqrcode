@@ -98,6 +98,12 @@ local ec = qrcode.calculate_error_correction(data,22)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
+data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+local ec_expected = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+local ec = qrcode.calculate_error_correction(data,10)
+for i=1,#ec_expected do
+	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
+end
 
 -- "HALLO WELT" in alphanumeric, code 5-H
 data = { 32,83,7,120,209,114,215,60,224,236,17,236,17,236,17,236, 17,236, 17,236, 17,236, 17, 236, 17,236, 17,236, 17,236, 17,236, 17,236, 17, 236, 17,236, 17,236, 17,236, 17,236, 17,236}
