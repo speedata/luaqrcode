@@ -1,8 +1,5 @@
 #!/usr/bin/env lua
 
--- Thanks for contributions/suggestions to:
---  Wes Garrison
-
 qrencode = dofile("qrencode.lua")
 
 

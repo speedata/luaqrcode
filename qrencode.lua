@@ -2,7 +2,7 @@
 --- To get in contact with the author, mail to <gundlach@speedata.de>.
 ---
 --- Please report bugs on the [github project page](http://speedata.github.com/luaqrcode/).
--- Copyright (c) 2012, Patrick Gundlach
+-- Copyright (c) 2012-2020, Patrick Gundlach and contributors, see https://github.com/speedata/luaqrcode
 -- All rights reserved.
 --
 -- Redistribution and use in source and binary forms, with or without
