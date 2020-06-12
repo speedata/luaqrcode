@@ -38,7 +38,7 @@ To get in contact with the author, mail to <a href="&#x6d;&#97;&#x69;&#108;&#x74
 
 </td>
 <td class="code">
-  <div class="highlight"><pre><span class="c">-- Copyright (c) 2012, Patrick Gundlach
+  <div class="highlight"><pre><span class="c">-- Copyright (c) 2012-2020, Patrick Gundlach and contributors, see https://github.com/speedata/luaqrcode
 </span><span class="c">-- All rights reserved.
 </span><span class="c">--
 </span><span class="c">-- Redistribution and use in source and binary forms, with or without
@@ -578,8 +578,9 @@ polynomial division. Find a math book from school and follow the code here :)</p
 
 </td>
 <td class="code">
-  <div class="highlight"><pre><span class="k">local</span> alpha_int = {
-	[0] = 0,
+  <div class="highlight"><pre><span class="c">-- https://codyplanteen.com/assets/rs/gf256_log_antilog.pdf
+</span><span class="k">local</span> alpha_int = {
+	[0] = 1,
 	  2,   4,   8,  16,  32,  64, 128,  29,  58, 116, 232, 205, 135,  19,  38,  76,
 	152,  45,  90, 180, 117, 234, 201, 143,   3,   6,  12,  24,  48,  96, 192, 157,
 	 39,  78, 156,  37,  74, 148,  53, 106, 212, 181, 119, 238, 193, 159,  35,  70,
@@ -595,12 +596,12 @@ polynomial division. Find a math book from school and follow the code here :)</p
 	 25,  50, 100, 200, 141,   7,  14,  28,  56, 112, 224, 221, 167,  83, 166,  81,
 	162,  89, 178, 121, 242, 249, 239, 195, 155,  43,  86, 172,  69, 138,   9,  18,
 	 36,  72, 144,  61, 122, 244, 245, 247, 243, 251, 235, 203, 139,  11,  22,  44,
-	 88, 176, 125, 250, 233, 207, 131,  27,  54, 108, 216, 173,  71, 142,   1
+	 88, 176, 125, 250, 233, 207, 131,  27,  54, 108, 216, 173,  71, 142,   0,   0
 }
 
 <span class="k">local</span> int_alpha = {
-	[0] = 0,
-	255,   1,  25,   2,  50,  26, 198,   3, 223,  51, 238,  27, 104, 199,  75,   4,
+	[0] = 256, <span class="c">-- special value
+</span>	0,   1,  25,   2,  50,  26, 198,   3, 223,  51, 238,  27, 104, 199,  75,   4,
 	100, 224,  14,  52, 141, 239, 129,  28, 193, 105, 248, 200,   8,  76, 113,   5,
 	138, 101,  47, 225,  36,  15,  33,  53, 147, 142, 218, 240,  18, 130,  69,  29,
 	181, 194, 125, 106,  39, 249, 185, 201, 154,   9, 120,  77, 228, 114, 166,   6,
@@ -727,14 +728,18 @@ We could have created the table programatically, but I like fixed tables.</p>
 </span>		<span class="c">-- it to the generator polynom
 </span>		<span class="k">local</span> exp = mp_alpha[highest_exponent]
 		<span class="k">for</span> i=highest_exponent,highest_exponent - num_ec_codewords,-1 <span class="k">do</span>
-			<span class="k">if</span> gp_alpha[i] + exp &gt; 255 <span class="k">then</span>
-				gp_alpha[i] = math.fmod(gp_alpha[i] + exp,255)
+			<span class="k">if</span> exp ~= 256 <span class="k">then</span>
+				<span class="k">if</span> gp_alpha[i] + exp &gt;= 255 <span class="k">then</span>
+					gp_alpha[i] = math.fmod(gp_alpha[i] + exp,255)
+				<span class="k">else</span>
+					gp_alpha[i] = gp_alpha[i] + exp
+				<span class="k">end</span>
 			<span class="k">else</span>
-				gp_alpha[i] = gp_alpha[i] + exp
+				gp_alpha[i] = 256
 			<span class="k">end</span>
 		<span class="k">end</span>
 		<span class="k">for</span> i=highest_exponent - num_ec_codewords - 1,0,-1 <span class="k">do</span>
-			gp_alpha[i] = 0
+			gp_alpha[i] = 256
 		<span class="k">end</span>
 
 		gp_int = convert_to_int(gp_alpha)
@@ -1198,13 +1203,14 @@ the top positioning patterns. This type information is not fixed, it depends on 
 <span class="k">end</span>
 
 <span class="c">-- Bits for version information 7-40
-</span><span class="k">local</span> version_information = {<span class="s">"001010010011111000"</span>, <span class="s">"000111101101000100"</span>, <span class="s">"100110010101100100"</span>,<span class="s">"011001011001010100"</span>,
-  <span class="s">"011011111101110100"</span>, <span class="s">"001000110111001100"</span>, <span class="s">"111000100001101100"</span>, <span class="s">"010110000011011100"</span>, <span class="s">"000101001001111100"</span>,
-  <span class="s">"000111101101000010"</span>, <span class="s">"010111010001100010"</span>, <span class="s">"111010000101010010"</span>, <span class="s">"001001100101110010"</span>, <span class="s">"011001011001001010"</span>,
-  <span class="s">"011000001011101010"</span>, <span class="s">"100100110001011010"</span>, <span class="s">"000110111111111010"</span>, <span class="s">"001000110111000110"</span>, <span class="s">"000100001111100110"</span>,
-  <span class="s">"110101011111010110"</span>, <span class="s">"000001110001110110"</span>, <span class="s">"010110000011001110"</span>, <span class="s">"001111110011101110"</span>, <span class="s">"101011101011011110"</span>,
-  <span class="s">"000000101001111110"</span>, <span class="s">"101010111001000001"</span>, <span class="s">"000001111011100001"</span>, <span class="s">"010111010001010001"</span>, <span class="s">"011111001111110001"</span>,
-  <span class="s">"110100001101001001"</span>, <span class="s">"001110100001101001"</span>, <span class="s">"001001100101011001"</span>, <span class="s">"010000010101111001"</span>, <span class="s">"100101100011000101"</span> }
+</span><span class="c">-- The reversed strings from https://www.thonky.com/qr-code-tutorial/format-version-tables
+</span><span class="k">local</span> version_information = {<span class="s">"001010010011111000"</span>, <span class="s">"001111011010000100"</span>, <span class="s">"100110010101100100"</span>, <span class="s">"110010110010010100"</span>,
+  <span class="s">"011011111101110100"</span>, <span class="s">"010001101110001100"</span>, <span class="s">"111000100001101100"</span>, <span class="s">"101100000110011100"</span>, <span class="s">"000101001001111100"</span>,
+  <span class="s">"000111101101000010"</span>, <span class="s">"101110100010100010"</span>, <span class="s">"111010000101010010"</span>, <span class="s">"010011001010110010"</span>, <span class="s">"011001011001001010"</span>,
+  <span class="s">"110000010110101010"</span>, <span class="s">"100100110001011010"</span>, <span class="s">"001101111110111010"</span>, <span class="s">"001000110111000110"</span>, <span class="s">"100001111000100110"</span>,
+  <span class="s">"110101011111010110"</span>, <span class="s">"011100010000110110"</span>, <span class="s">"010110000011001110"</span>, <span class="s">"111111001100101110"</span>, <span class="s">"101011101011011110"</span>,
+  <span class="s">"000010100100111110"</span>, <span class="s">"101010111001000001"</span>, <span class="s">"000011110110100001"</span>, <span class="s">"010111010001010001"</span>, <span class="s">"111110011110110001"</span>,
+  <span class="s">"110100001101001001"</span>, <span class="s">"011101000010101001"</span>, <span class="s">"001001100101011001"</span>, <span class="s">"100000101010111001"</span>, <span class="s">"100101100011000101"</span> }
 
 <span class="c">-- Versions 7 and above need two bitfields with version information added to the code
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_version_information</span>(matrix,version)
