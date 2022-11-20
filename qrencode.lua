@@ -1,7 +1,7 @@
 --- The qrcode library is licensed under the 3-clause BSD license (aka "new BSD")
 --- To get in contact with the author, mail to <gundlach@speedata.de>.
 ---
---- Please report bugs on the [github project page](http://speedata.github.com/luaqrcode/).
+--- Please report bugs on the [github project page](http://speedata.github.io/luaqrcode/).
 -- Copyright (c) 2012-2020, Patrick Gundlach and contributors, see https://github.com/speedata/luaqrcode
 -- All rights reserved.
 --
