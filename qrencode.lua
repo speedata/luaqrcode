@@ -175,7 +175,6 @@ end
 -- See table 2 of the spec. We only support mode 1, 2 and 4.
 -- That is: numeric, alaphnumeric and binary.
 local function get_mode( str )
-	local mode
 	if string.match(str,"^[0-9]+$") then
 		return 1
 	elseif string.match(str,"^[0-9A-Z $%%*./:+-]+$") then
@@ -183,7 +182,7 @@ local function get_mode( str )
 	else
 		return 4
 	end
-	assert(false,"never reached")
+	assert(false,"never reached") -- luacheck: ignore
 	return nil
 end
 
@@ -230,7 +229,7 @@ local function get_version_eclevel(len,mode,requested_ec_level)
 	end
 	assert( local_mode <= 4 )
 
-	local bytes, bits, digits, modebits, c
+	local bits, digits, modebits, c
 	local tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
 	local minversion = 40
 	local maxec_level = requested_ec_level or 1
@@ -495,9 +494,9 @@ local generator_polynomial = {
 -- Turn a binary string of length 8*x into a table size x of numbers.
 local function convert_bitstring_to_bytes(data)
 	local msg = {}
-	local tab = string.gsub(data,"(........)",function(x)
+	string.gsub(data,"(........)",function(x)
 		msg[#msg+1] = tonumber(x,2)
-		end)
+	end)
 	return msg
 end
 
@@ -527,7 +526,7 @@ local function convert_to_alpha( tab )
 end
 
 -- Convert polynominal in alpha notation to int notation.
-local function convert_to_int(tab,len_message)
+local function convert_to_int(tab)
 	local new_tab = {}
 	for i=0,#tab do
 		new_tab[i] = alpha_int[tab[i]]
@@ -543,15 +542,15 @@ local function calculate_error_correction(data,num_ec_codewords)
 	elseif type(data)=="table" then
 		mp = data
 	else
-		assert(false,"Unknown type for data: %s",type(data))
+		assert(false,string.format("Unknown type for data: %s",type(data)))
 	end
 	local len_message = #mp
 
 	local highest_exponent = len_message + num_ec_codewords - 1
 	local gp_alpha,tmp
 	local he
-	local gp_int = {}
-	local mp_int,mp_alpha = {},{}
+	local gp_int, mp_alpha
+	local mp_int = {}
 	-- create message shifted to left (highest exponent)
 	for i=1,len_message do
 		mp_int[highest_exponent - i + 1] = mp[i]
@@ -729,8 +728,8 @@ local function arrange_codewords_and_calculate_ec( version,ec_level,data )
 			size_ecblock_bytes   = blocks[2*i][1] - blocks[2*i][2]
 			cpty_ec_bits = cpty_ec_bits + size_ecblock_bytes * 8
 			datablocks[#datablocks + 1] = string.sub(data, pos * 8 + 1,( pos + size_datablock_bytes)*8)
-			tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
-			tmp_str = ""
+			local tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
+			local tmp_str = ""
 			for x=1,#tmp_tab do
 				tmp_str = tmp_str .. binary(tmp_tab[x],8)
 			end
@@ -974,7 +973,7 @@ local function add_version_information(matrix,version)
 	local x,y, bit
 	local start_x, start_y
 	-- first top right
-	start_x = #matrix - 10
+	start_x = size - 10
 	start_y = 1
 	for i=1,#bitstring do
 		bit = string.sub(bitstring,i,i)
@@ -985,7 +984,7 @@ local function add_version_information(matrix,version)
 
 	-- now bottom left
 	start_x = 1
-	start_y = #matrix - 10
+	start_y = size - 10
 	for i=1,#bitstring do
 		bit = string.sub(bitstring,i,i)
 		x = start_x + math.floor( (i - 1) / 3 )
@@ -1037,7 +1036,7 @@ local function get_pixel_with_mask( mask, x,y,value )
 	y = y - 1
 	local invert = false
 	-- test purpose only:
-	if mask == -1 then
+	if mask == -1 then -- luacheck: ignore
 		-- ignore, no masking applied
 	elseif mask == 0 then
 		if math.fmod(x + y,2) == 0 then invert = true end
@@ -1122,7 +1121,7 @@ end
 
 -- Add the data string (0's and 1's) to the matrix for the given mask.
 local function add_data_to_matrix(matrix,data,mask)
-	size = #matrix
+	local size = #matrix
 	local x,y,positions
 	local _x,_y,m
 	local dir = "up"
@@ -1130,7 +1129,7 @@ local function add_data_to_matrix(matrix,data,mask)
 	x,y = size,size
 	string.gsub(data,".?.?.?.?.?.?.?.?",function ( byte )
 		byte_number = byte_number + 1
-		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,byte,mask)
+		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,byte)
 		for i=1,#byte do
 			_x = positions[i][1]
 			_y = positions[i][2]
@@ -1156,7 +1155,7 @@ end
 --- reading the code.
 -- Return the penalty for the given matrix
 local function calculate_penalty(matrix)
-	local penalty1, penalty2, penalty3, penalty4 = 0,0,0,0
+	local penalty1, penalty2, penalty3 = 0,0,0
 	local size = #matrix
 	-- this is for penalty 4
 	local number_of_dark_cells = 0
@@ -1179,7 +1178,6 @@ local function calculate_penalty(matrix)
 			else
 				is_blank = true
 			end
-			is_blank = matrix[x][y] < 0
 			if last_bit_blank == is_blank then
 				number_of_consecutive_bits = number_of_consecutive_bits + 1
 			else
@@ -1271,7 +1269,7 @@ local function calculate_penalty(matrix)
 	-- ----------------------------------------------
 	-- 50 ± (5 × k)% to 50 ± (5 × (k + 1))% -> 10 × k
 	local dark_ratio = number_of_dark_cells / ( size * size )
-	penalty4 = math.floor(math.abs(dark_ratio * 100 - 50)) * 2
+	local penalty4 = math.floor(math.abs(dark_ratio * 100 - 50)) * 2
 	return penalty1 + penalty2 + penalty3 + penalty4
 end
 
@@ -1311,7 +1309,7 @@ end
 --- 1. Generate 8 matrices with different masks and calculate the penalty
 --- 1. Return qrcode with least penalty
 -- If ec_level or mode is given, use the ones for generating the qrcode. (mode is not implemented yet)
-local function qrcode( str, ec_level, mode )
+local function qrcode( str, ec_level, _mode ) -- luacheck: no unused args
 	local arranged_data, version, data_raw, mode, len_bitstring
 	version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str,ec_level)
 	data_raw = data_raw .. len_bitstring

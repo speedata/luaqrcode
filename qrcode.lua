@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-qrencode = dofile("qrencode.lua")
+local qrencode = dofile("qrencode.lua")
 
 
 -- padding: number of padding rows/columns around QR code
