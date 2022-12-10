@@ -120,3 +120,4 @@ if failed then
 else
 	print("Everything looks fine")
 end
+os.exit(failed and 1 or 0)
