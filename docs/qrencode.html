@@ -244,7 +244,6 @@ the input data (the mode to be used), the requested error correction level
 </span><span class="c">-- See table 2 of the spec. We only support mode 1, 2 and 4.
 </span><span class="c">-- That is: numeric, alaphnumeric and binary.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">get_mode</span>( str )
-	<span class="k">local</span> mode
 	<span class="k">if</span> string.match(str,<span class="s">"^[0-9]+$"</span>) <span class="k">then</span>
 		<span class="k">return</span> 1
 	<span class="k">elseif</span> string.match(str,<span class="s">"^[0-9A-Z $&#37;&#37;*./:+-]+$"</span>) <span class="k">then</span>
@@ -252,8 +251,8 @@ the input data (the mode to be used), the requested error correction level
 	<span class="k">else</span>
 		<span class="k">return</span> 4
 	<span class="k">end</span>
-	<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"never reached"</span>)
-	<span class="k">return</span> <span class="k">nil</span>
+	<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"never reached"</span>) <span class="c">-- luacheck: ignore
+</span>	<span class="k">return</span> <span class="k">nil</span>
 <span class="k">end</span>
 
 
@@ -320,7 +319,7 @@ then the ec level (LMQH - 1,2,3,4) must be at least the requested level.</p>
 	<span class="k">end</span>
 	<span class="nt">assert</span>( local_mode &lt;= 4 )
 
-	<span class="k">local</span> bytes, bits, digits, modebits, c
+	<span class="k">local</span> bits, digits, modebits, c
 	<span class="k">local</span> tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
 	<span class="k">local</span> minversion = 40
 	<span class="k">local</span> maxec_level = requested_ec_level <span class="o">or</span> 1
@@ -640,9 +639,9 @@ polynomial division. Find a math book from school and follow the code here :)</p
 <span class="c">-- Turn a binary string of length 8*x into a table size x of numbers.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_bitstring_to_bytes</span>(data)
 	<span class="k">local</span> msg = {}
-	<span class="k">local</span> tab = string.gsub(data,<span class="s">"(........)"</span>,<span class="k">function</span>(x)
+	string.gsub(data,<span class="s">"(........)"</span>,<span class="k">function</span>(x)
 		msg[#msg+1] = <span class="nt">tonumber</span>(x,2)
-		<span class="k">end</span>)
+	<span class="k">end</span>)
 	<span class="k">return</span> msg
 <span class="k">end</span>
 
@@ -683,7 +682,7 @@ We could have created the table programatically, but I like fixed tables.</p>
 <span class="k">end</span>
 
 <span class="c">-- Convert polynominal in alpha notation to int notation.
-</span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_to_int</span>(tab,len_message)
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">convert_to_int</span>(tab)
 	<span class="k">local</span> new_tab = {}
 	<span class="k">for</span> i=0,#tab <span class="k">do</span>
 		new_tab[i] = alpha_int[tab[i]]
@@ -699,15 +698,15 @@ We could have created the table programatically, but I like fixed tables.</p>
 	<span class="k">elseif</span> <span class="nt">type</span>(data)==<span class="s">"table"</span> <span class="k">then</span>
 		mp = data
 	<span class="k">else</span>
-		<span class="nt">assert</span>(<span class="k">false</span>,<span class="s">"Unknown type for data: &#37;s"</span>,<span class="nt">type</span>(data))
+		<span class="nt">assert</span>(<span class="k">false</span>,string.format(<span class="s">"Unknown type for data: &#37;s"</span>,<span class="nt">type</span>(data)))
 	<span class="k">end</span>
 	<span class="k">local</span> len_message = #mp
 
 	<span class="k">local</span> highest_exponent = len_message + num_ec_codewords - 1
 	<span class="k">local</span> gp_alpha,tmp
 	<span class="k">local</span> he
-	<span class="k">local</span> gp_int = {}
-	<span class="k">local</span> mp_int,mp_alpha = {},{}
+	<span class="k">local</span> gp_int, mp_alpha
+	<span class="k">local</span> mp_int = {}
 	<span class="c">-- create message shifted to left (highest exponent)
 </span>	<span class="k">for</span> i=1,len_message <span class="k">do</span>
 		mp_int[highest_exponent - i + 1] = mp[i]
@@ -898,22 +897,22 @@ with error correction codes.</p>
 </span>	<span class="k">local</span> blocks = ecblocks[version][ec_level]
 	<span class="k">local</span> size_datablock_bytes, size_ecblock_bytes
 	<span class="k">local</span> datablocks = {}
-	<span class="k">local</span> ecblocks = {}
+	<span class="k">local</span> final_ecblocks = {}
 	<span class="k">local</span> count = 1
 	<span class="k">local</span> pos = 0
 	<span class="k">local</span> cpty_ec_bits = 0
 	<span class="k">for</span> i=1,#blocks/2 <span class="k">do</span>
-		<span class="k">for</span> j=1,blocks[2*i - 1] <span class="k">do</span>
+		<span class="k">for</span> _=1,blocks[2*i - 1] <span class="k">do</span>
 			size_datablock_bytes = blocks[2*i][2]
 			size_ecblock_bytes   = blocks[2*i][1] - blocks[2*i][2]
 			cpty_ec_bits = cpty_ec_bits + size_ecblock_bytes * 8
 			datablocks[#datablocks + 1] = string.sub(data, pos * 8 + 1,( pos + size_datablock_bytes)*8)
-			tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
-			tmp_str = <span class="s">""</span>
+			<span class="k">local</span> tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
+			<span class="k">local</span> tmp_str = <span class="s">""</span>
 			<span class="k">for</span> x=1,#tmp_tab <span class="k">do</span>
 				tmp_str = tmp_str .. binary(tmp_tab[x],8)
 			<span class="k">end</span>
-			ecblocks[#ecblocks + 1] = tmp_str
+			final_ecblocks[#final_ecblocks + 1] = tmp_str
 			pos = pos + size_datablock_bytes
 			count = count + 1
 		<span class="k">end</span>
@@ -932,9 +931,9 @@ with error correction codes.</p>
 </span>	<span class="k">local</span> arranged_ec = <span class="s">""</span>
 	pos = 1
 	<span class="k">repeat</span>
-		<span class="k">for</span> i=1,#ecblocks <span class="k">do</span>
-			<span class="k">if</span> pos &lt; #ecblocks[i] <span class="k">then</span>
-				arranged_ec = arranged_ec .. string.sub(ecblocks[i],pos, pos + 7)
+		<span class="k">for</span> i=1,#final_ecblocks <span class="k">do</span>
+			<span class="k">if</span> pos &lt; #final_ecblocks[i] <span class="k">then</span>
+				arranged_ec = arranged_ec .. string.sub(final_ecblocks[i],pos, pos + 7)
 			<span class="k">end</span>
 		<span class="k">end</span>
 		pos = pos + 8
@@ -1220,7 +1219,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 	<span class="k">local</span> x,y, bit
 	<span class="k">local</span> start_x, start_y
 	<span class="c">-- first top right
-</span>	start_x = #matrix - 10
+</span>	start_x = size - 10
 	start_y = 1
 	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
 		bit = string.sub(bitstring,i,i)
@@ -1231,7 +1230,7 @@ the top positioning patterns. This type information is not fixed, it depends on 
 
 	<span class="c">-- now bottom left
 </span>	start_x = 1
-	start_y = #matrix - 10
+	start_y = size - 10
 	<span class="k">for</span> i=1,#bitstring <span class="k">do</span>
 		bit = string.sub(bitstring,i,i)
 		x = start_x + math.floor( (i - 1) / 3 )
@@ -1306,8 +1305,8 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 	y = y - 1
 	<span class="k">local</span> invert = <span class="k">false</span>
 	<span class="c">-- test purpose only:
-</span>	<span class="k">if</span> mask == -1 <span class="k">then</span>
-		<span class="c">-- ignore, no masking applied
+</span>	<span class="k">if</span> mask == -1 <span class="k">then</span> <span class="c">-- luacheck: ignore
+</span>		<span class="c">-- ignore, no masking applied
 </span>	<span class="k">elseif</span> mask == 0 <span class="k">then</span>
 		<span class="k">if</span> math.fmod(x + y,2) == 0 <span class="k">then</span> invert = <span class="k">true</span> <span class="k">end</span>
 	<span class="k">elseif</span> mask == 1 <span class="k">then</span>
@@ -1391,7 +1390,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 
 <span class="c">-- Add the data string (0's and 1's) to the matrix for the given mask.
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">add_data_to_matrix</span>(matrix,data,mask)
-	size = #matrix
+	<span class="k">local</span> size = #matrix
 	<span class="k">local</span> x,y,positions
 	<span class="k">local</span> _x,_y,m
 	<span class="k">local</span> dir = <span class="s">"up"</span>
@@ -1399,7 +1398,7 @@ We do this for each mask. BTW speaking of mask, this is what we find in the spec
 	x,y = size,size
 	string.gsub(data,<span class="s">".?.?.?.?.?.?.?.?"</span>,<span class="k">function</span> ( byte )
 		byte_number = byte_number + 1
-		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,byte,mask)
+		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,byte)
 		<span class="k">for</span> i=1,#byte <span class="k">do</span>
 			_x = positions[i][1]
 			_y = positions[i][2]
@@ -1438,7 +1437,7 @@ reading the code.</p>
 <td class="code">
   <div class="highlight"><pre><span class="c">-- Return the penalty for the given matrix
 </span><span class="k">local</span> <span class="k">function</span> <span class="nf">calculate_penalty</span>(matrix)
-	<span class="k">local</span> penalty1, penalty2, penalty3, penalty4 = 0,0,0,0
+	<span class="k">local</span> penalty1, penalty2, penalty3 = 0,0,0
 	<span class="k">local</span> size = #matrix
 	<span class="c">-- this is for penalty 4
 </span>	<span class="k">local</span> number_of_dark_cells = 0
@@ -1461,7 +1460,6 @@ reading the code.</p>
 			<span class="k">else</span>
 				is_blank = <span class="k">true</span>
 			<span class="k">end</span>
-			is_blank = matrix[x][y] &lt; 0
 			<span class="k">if</span> last_bit_blank == is_blank <span class="k">then</span>
 				number_of_consecutive_bits = number_of_consecutive_bits + 1
 			<span class="k">else</span>
@@ -1553,7 +1551,7 @@ reading the code.</p>
 </span>	<span class="c">-- ----------------------------------------------
 </span>	<span class="c">-- 50 ± (5 × k)&#37; to 50 ± (5 × (k + 1))&#37; -&gt; 10 × k
 </span>	<span class="k">local</span> dark_ratio = number_of_dark_cells / ( size * size )
-	penalty4 = math.floor(math.abs(dark_ratio * 100 - 50)) * 2
+	<span class="k">local</span> penalty4 = math.floor(math.abs(dark_ratio * 100 - 50)) * 2
 	<span class="k">return</span> penalty1 + penalty2 + penalty3 + penalty4
 <span class="k">end</span>
 
@@ -1606,8 +1604,8 @@ reading the code.</p>
 </td>
 <td class="code">
   <div class="highlight"><pre><span class="c">-- If ec_level or mode is given, use the ones for generating the qrcode. (mode is not implemented yet)
-</span><span class="k">local</span> <span class="k">function</span> <span class="nf">qrcode</span>( str, ec_level, mode )
-	<span class="k">local</span> arranged_data, version, data_raw, mode, len_bitstring
+</span><span class="k">local</span> <span class="k">function</span> <span class="nf">qrcode</span>( str, ec_level, _mode ) <span class="c">-- luacheck: no unused args
+</span>	<span class="k">local</span> arranged_data, version, data_raw, mode, len_bitstring
 	version, ec_level, data_raw, mode, len_bitstring = get_version_eclevel_mode_bistringlength(str,ec_level)
 	data_raw = data_raw .. len_bitstring
 	data_raw = data_raw .. encode_data(str,mode)
