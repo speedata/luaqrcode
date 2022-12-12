@@ -718,12 +718,12 @@ local function arrange_codewords_and_calculate_ec( version,ec_level,data )
 	local blocks = ecblocks[version][ec_level]
 	local size_datablock_bytes, size_ecblock_bytes
 	local datablocks = {}
-	local ecblocks = {}
+	local final_ecblocks = {}
 	local count = 1
 	local pos = 0
 	local cpty_ec_bits = 0
 	for i=1,#blocks/2 do
-		for j=1,blocks[2*i - 1] do
+		for _=1,blocks[2*i - 1] do
 			size_datablock_bytes = blocks[2*i][2]
 			size_ecblock_bytes   = blocks[2*i][1] - blocks[2*i][2]
 			cpty_ec_bits = cpty_ec_bits + size_ecblock_bytes * 8
@@ -733,7 +733,7 @@ local function arrange_codewords_and_calculate_ec( version,ec_level,data )
 			for x=1,#tmp_tab do
 				tmp_str = tmp_str .. binary(tmp_tab[x],8)
 			end
-			ecblocks[#ecblocks + 1] = tmp_str
+			final_ecblocks[#final_ecblocks + 1] = tmp_str
 			pos = pos + size_datablock_bytes
 			count = count + 1
 		end
@@ -752,9 +752,9 @@ local function arrange_codewords_and_calculate_ec( version,ec_level,data )
 	local arranged_ec = ""
 	pos = 1
 	repeat
-		for i=1,#ecblocks do
-			if pos < #ecblocks[i] then
-				arranged_ec = arranged_ec .. string.sub(ecblocks[i],pos, pos + 7)
+		for i=1,#final_ecblocks do
+			if pos < #final_ecblocks[i] then
+				arranged_ec = arranged_ec .. string.sub(final_ecblocks[i],pos, pos + 7)
 			end
 		end
 		pos = pos + 8
