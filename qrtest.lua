@@ -1,12 +1,12 @@
 #!/usr/bin/env lua
 
 
-function err( ... )
+local function err( ... )
 	print(string.format(...))
 end
 
 local failed = false
-function assert_equal( a,b,func )
+local function assert_equal( a,b,func )
 	if a ~= b then
 		err("Assertion failed: %s: %q is not equal to %q",func,tostring(a),tostring(b))
 		failed = true
@@ -18,7 +18,7 @@ testing=true
 
 local qrcode        = dofile("qrencode.lua")
 local tab
-str = "HELLO WORLD"
+local str = "HELLO WORLD"
 assert_equal(qrcode.get_mode("0101"),           1,"get_encoding_byte 1")
 assert_equal(qrcode.get_mode(str),              2,"get_encoding_byte 2")
 assert_equal(qrcode.get_mode("0-9A-Z $%*./:+-"),2,"get_encoding_byte 3")
@@ -70,46 +70,46 @@ for i=1,#ec_expected do
 end
 data = {32, 234, 187, 136, 103, 116, 252, 228, 127, 141, 73, 236, 12, 206, 138, 7, 230, 101, 30, 91, 152, 80, 0, 236, 17, 236, 17, 236, 17, 236, 17, 236, 17, 236}
 ec_expected = {66, 146, 126, 122, 79, 146, 2, 105, 180, 35}
-local ec = qrcode.calculate_error_correction(data,10)
+ec = qrcode.calculate_error_correction(data,10)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 data = {32, 83, 7, 120, 209, 114, 215, 60, 224}
 ec_expected = {123, 120, 222, 125, 116, 92, 144, 245, 58, 73, 104, 30, 108, 0, 30, 166, 152}
-local ec = qrcode.calculate_error_correction(data,17)
+ec = qrcode.calculate_error_correction(data,17)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 data = {32,83,7,120,209,114,215,60,224,236,17}
 ec_expected = {3, 67, 244, 57, 183, 14, 171, 101, 213, 52, 148, 3, 144, 148, 6, 155, 3, 252, 228, 100, 11, 56}
-local ec = qrcode.calculate_error_correction(data,22)
+ec = qrcode.calculate_error_correction(data,22)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 data = {236,17,236,17,236, 17,236, 17,236, 17,236}
 ec_expected = {171, 165, 230, 109, 241, 45, 198, 125, 213, 84, 88, 187, 89, 61, 220, 255, 150, 75, 113, 77, 147, 164}
-local ec = qrcode.calculate_error_correction(data,22)
+ec = qrcode.calculate_error_correction(data,22)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 data = {17,236, 17,236, 17,236,17,236, 17,236, 17,236}
 ec_expected = {23, 115, 68, 245, 125, 66, 203, 235, 85, 88, 174, 178, 229, 181, 118, 148, 44, 175, 213, 243, 27, 215}
-local ec = qrcode.calculate_error_correction(data,22)
+ec = qrcode.calculate_error_correction(data,22)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 data = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-local ec_expected = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-local ec = qrcode.calculate_error_correction(data,10)
+ec_expected = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+ec = qrcode.calculate_error_correction(data,10)
 for i=1,#ec_expected do
 	assert_equal(ec_expected[i],ec[i],string.format("calculate_error_correction %d",i))
 end
 
 -- "HALLO WELT" in alphanumeric, code 5-H
 data = { 32,83,7,120,209,114,215,60,224,236,17,236,17,236,17,236, 17,236, 17,236, 17,236, 17, 236, 17,236, 17,236, 17,236, 17,236, 17,236, 17, 236, 17,236, 17,236, 17,236, 17,236, 17,236}
-message_expected = {32, 236, 17, 17, 83, 17, 236, 236, 7, 236, 17, 17, 120, 17, 236, 236, 209, 236, 17, 17, 114, 17, 236, 236, 215, 236, 17, 17, 60, 17, 236, 236, 224, 236, 17, 17, 236, 17, 236, 236, 17, 236, 17, 17, 236, 236, 3, 171, 23, 23, 67, 165, 115, 115, 244, 230, 68, 68, 57, 109, 245, 245, 183, 241, 125, 125, 14, 45, 66, 66, 171, 198, 203, 203, 101, 125, 235, 235, 213, 213, 85, 85, 52, 84, 88, 88, 148, 88, 174, 174, 3, 187, 178, 178, 144, 89, 229, 229, 148, 61, 181, 181, 6, 220, 118, 118, 155, 255, 148, 148, 3, 150, 44, 44, 252, 75, 175, 175, 228, 113, 213, 213, 100, 77, 243, 243, 11, 147, 27, 27, 56, 164, 215, 215}
-tmp = qrcode.arrange_codewords_and_calculate_ec(5,4,data)
-message = qrcode.convert_bitstring_to_bytes(tmp)
+local message_expected = {32, 236, 17, 17, 83, 17, 236, 236, 7, 236, 17, 17, 120, 17, 236, 236, 209, 236, 17, 17, 114, 17, 236, 236, 215, 236, 17, 17, 60, 17, 236, 236, 224, 236, 17, 17, 236, 17, 236, 236, 17, 236, 17, 17, 236, 236, 3, 171, 23, 23, 67, 165, 115, 115, 244, 230, 68, 68, 57, 109, 245, 245, 183, 241, 125, 125, 14, 45, 66, 66, 171, 198, 203, 203, 101, 125, 235, 235, 213, 213, 85, 85, 52, 84, 88, 88, 148, 88, 174, 174, 3, 187, 178, 178, 144, 89, 229, 229, 148, 61, 181, 181, 6, 220, 118, 118, 155, 255, 148, 148, 3, 150, 44, 44, 252, 75, 175, 175, 228, 113, 213, 213, 100, 77, 243, 243, 11, 147, 27, 27, 56, 164, 215, 215}
+local tmp = qrcode.arrange_codewords_and_calculate_ec(5,4,data)
+local message = qrcode.convert_bitstring_to_bytes(tmp)
 for i=1,#message do
 	assert_equal(message_expected[i],message[i],string.format("arrange_codewords_and_calculate_ec %d",i))
 end
