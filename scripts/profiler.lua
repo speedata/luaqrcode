@@ -6,7 +6,7 @@ local profiler = {
 local clock = os.clock
 
 local function hook(event)
-    local info = debug.getinfo(2, "nS")  -- 2 = Aufrufer, n = Name, S = Quelle
+    local info = debug.getinfo(2, "nS")  -- 2 = caller, n = name, S = source
     if not info then return end
 
     local key = string.format("%s:%s:%d",
