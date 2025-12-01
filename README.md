@@ -20,6 +20,14 @@ make test
 
 This will execute the Lua test script provided in the repository and is intended to catch regressions and verify the behaviour of non-trivial functions. Contributions that change core logic should ideally extend or update these tests.
 
+#### Black-box QR testcases
+
+Black-box tests live in `qrblackbox.lua` and load sample data from `qrblackbox_data.lua`. Each test case is on a single line to make appending easy.
+
+- Generate a new case: `lua qrblackbox.lua --generate "your text"`; this prints a ready-to-paste line.
+- Append that line to the end of `qrblackbox_data.lua`.
+- Run the tests: `lua qrblackbox.lua` or `make test`.
+
 ### Profiling / hotspot analysis
 
 For performance work there is a small profiling script that can be invoked via:
