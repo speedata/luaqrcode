@@ -505,15 +505,15 @@ local function calculate_error_correction(data,num_ec_codewords)
 			mp_int[i] = bit_xor(alpha_int[gp_alpha[i]],mp_int[i])
 		end
 		-- remove leading 0's
-        for i=highest_exponent,num_ec_codewords,-1 do
-            if mp_int[i]==0 then
-                highest_exponent=i-1
-            else
-                break
-            end
-        end
+		for i=highest_exponent,num_ec_codewords,-1 do
+			if mp_int[i]==0 then
+				highest_exponent=i-1
+			else
+				break
+			end
+		end
 
-        if highest_exponent<num_ec_codewords then break end
+		if highest_exponent<num_ec_codewords then break end
 	end
 	local ret = {}
 
@@ -904,107 +904,66 @@ end
 ---	     110                      ((y x) mod 2 + (y x) mod 3) mod 2 = 0
 ---	     111                      ((y x) mod 3 + (y+x) mod 2) mod 2 = 0
 
--- Return 1 (black) or -1 (blank) depending on the mask, value and position.
+-- Mask functions, i & j are 0-based, so input should be (x-1,y-1)
+-- true means 'invert this bit'
+local maskFunc={
+	[-1]=function(_,_) return false end, -- test purpose only, no mask applied
+	[0]=function(x,y) return (y+x)%2==0 end,
+	function(_,y) return y%2==0 end,
+	function(x,_) return x%3==0 end,
+	function(x,y) return (y+x)%3==0 end,
+	function(x,y) return (y%4-1.5)*(x%6-2.5)>0 end, -- optimized for not using math.floor (too slow) or // operation (new Lua only)
+	function(x,y) return (y*x)%2+(y*x)%3==0 end,
+	function(x,y) return ((y*x)%3+y*x)%2==0 end,
+	function(x,y) return ((y*x)%3+y+x)%2==0 end,
+}
+
+-- Receive 0 (blank) or 1 (black) from data,
+-- Return -1 (blank) or 1 (black) depending on the value, mask, and position.
 -- Parameter mask is 0-7 (-1 for 'no mask'). x and y are 1-based coordinates,
 -- 1,1 = upper left. value must be 0 or 1.
-local function get_pixel_with_mask(mask,x,y,value)
-	-- test purpose only, no mask applied
-	if mask == -1 then return value==0 and -1 or 1 end
-
-	x, y = x - 1, y - 1
-	local invert
-	if mask == 0 then
-		invert = (x + y) % 2 == 0
-	elseif mask == 1 then
-		invert = y % 2 == 0
-	elseif mask == 2 then
-		invert = x % 3 == 0
-	elseif mask == 3 then
-		invert = (x + y) % 3 == 0
-	elseif mask == 4 then
-		invert = (x % 6 - 2.5) * (y % 4 - 1.5) > 0 -- original formula: (floor(y / 2) + floor(x / 3)) % 2 == 0
-	elseif mask == 5 then
-		invert = (x * y) % 2 + (x * y) % 3 == 0
-	elseif mask == 6 then
-		invert = ((x * y) % 3 + x * y) % 2 == 0
-	elseif mask == 7 then
-		invert = ((x * y) % 3 + x + y) % 2 == 0
-	else
-		assert(false,"This can't happen (mask must be <= 7)")
-	end
-	-- add 2nd == as boolean XNOR
-	return (value==0)==invert and 1 or -1
-end
-
--- We need up to 8 positions in the matrix. Only the last few bits may be less then 8.
--- The function returns a table of (up to) 8 entries with subtables where
--- the x coordinate is the first and the y coordinate is the second entry.
-local function get_next_free_positions(matrix,x,y,dir,bytes)
-	local ret = {}
-	local count = 1
-	local mode = "right"
-	while count <= #bytes do
-		if mode == "right" and matrix[x][y] == 0 then
-			ret[#ret + 1] = {x,y}
-			mode = "left"
-			count = count + 1
-		elseif mode == "left" and matrix[x-1][y] == 0 then
-			ret[#ret + 1] = {x-1,y}
-			mode = "right"
-			count = count + 1
-			if dir == "up" then
-				y = y - 1
-			else
-				y = y + 1
-			end
-		elseif mode == "right" and matrix[x-1][y] == 0 then
-			ret[#ret + 1] = {x-1,y}
-			count = count + 1
-			if dir == "up" then
-				y = y - 1
-			else
-				y = y + 1
-			end
-		else
-			if dir == "up" then
-				y = y - 1
-			else
-				y = y + 1
-			end
-		end
-		if y < 1 or y > #matrix then
-			x = x - 2
-			-- don't overwrite the timing pattern
-			if x == 7 then x = 6 end
-			if dir == "up" then
-				dir = "down"
-				y = 1
-			else
-				dir = "up"
-				y = #matrix
-			end
-		end
-	end
-	return ret,x,y,dir
+local function get_pixel_with_mask(mask,x,y,dataBit)
+	local invert = maskFunc[mask](x-1,y-1)
+	return (dataBit==0)==invert and 1 or -1
+	--       This^ == is used as boolean XNOR:
+	--  data    F  T <- invert?
+	--   0   F -1  1 
+	--   1   T  1 -1 
 end
 
 -- Add the data string (0's and 1's) to the matrix for the given mask.
 local function add_data_to_matrix(matrix,data,mask)
 	local size = #matrix
-	local x,y,positions
-	local _x,_y,m
-	local dir = "up"
-	local byte_number = 0
-	x,y = size,size
-	for j=1,#data,8 do
-		local bytes = sub(data,j,j+7)
-		byte_number = byte_number + 1
-		positions,x,y,dir = get_next_free_positions(matrix,x,y,dir,bytes)
-		for i=1,#bytes do
-			_x, _y = positions[i][1], positions[i][2]
-			m = get_pixel_with_mask(mask,_x,_y,byte(bytes,i)-48) -- "0" = 48, "1" = 49
-			matrix[_x][_y] = m
+	-- Fill data into matrix
+	local ptr=1             -- data pointer
+	local x,y=size,size     -- writing position, starts from bottom right
+	local x_dir,y_dir=-1,-1 -- state of movement, notice that Y step once each two X steps
+	while true do
+		-- 0 means available data cell to write data
+		if matrix[x][y]==0 then
+			matrix[x][y] = get_pixel_with_mask(mask,x,y,byte(data,ptr)-48) -- '0' = 48, '1' = 49
+			ptr = ptr + 1
+			if ptr > #data then return matrix end -- all data written, finish
 		end
+
+		-- Move to next cell (won't write into unavailable cell so it's fine to move 1 step each time)
+		-- switch left/right
+		x = x + x_dir
+		-- if just stepped right, it means current 2 bits were finished
+		if x_dir == 1 then
+			-- so we step up/down for next 2 bits
+			y = y + y_dir
+
+			-- when we went outside the matrix, move 2 cells left and turn back
+			if not matrix[y] then -- square, so matrix[y] will be nil if y is out of range, no matter [x][y] or [y][x]
+				x = x - 2
+				if x == 7 then x = 6 end -- jump over timing pattern
+				y = y_dir == -1 and 1 or size
+				y_dir = -y_dir
+			end
+		end
+		-- prepare next left/right
+		x_dir = -x_dir
 	end
 end
 
@@ -1206,7 +1165,6 @@ if testing then
 		add_typeinfo_to_matrix = add_typeinfo_to_matrix,
 		add_version_information = add_version_information,
 		prepare_matrix_with_mask = prepare_matrix_with_mask,
-		get_next_free_positions = get_next_free_positions,
 		add_data_to_matrix = add_data_to_matrix,
 		qrcode = qrcode,
 		binary = binary,
