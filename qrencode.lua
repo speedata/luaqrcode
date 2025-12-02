@@ -53,41 +53,36 @@ local byte,sub,rep=string.byte,string.sub,string.rep
 local gsub,match,format=string.gsub,string.match,string.format
 local concat = table.concat
 
--- Build a fast xor helper that stays compatible across Lua versions.
--- We precompute a 256x256 lookup table once at load time using a portable
--- arithmetic xor; the hot path is then a constant-time table lookup without
--- requiring native bitwise operators or external bit libraries.
--- Slow but portable xor used only while populating the lookup table if no native op exists.
-local function slow_xor(a,b)
-	local result = 0
-	local bitval = 1
-	while a > 0 or b > 0 do
-		if (a % 2) ~= (b % 2) then
-			result = result + bitval
-		end
-		a = floor(a / 2)
-		b = floor(b / 2)
-		bitval = bitval * 2
-	end
-	return result
-end
 
 local xor_lookup = {}
 do
+	-- Build a fast xor helper that stays compatible across Lua versions.
+	-- We precompute a 256x256 lookup table once at load time using a portable
+	-- arithmetic xor; the hot path is then a constant-time table lookup without
+	-- requiring native bitwise operators or external bit libraries.
+	-- Slow but portable xor used only while populating the lookup table if no native op exists.
+	local function slow_xor(a,b)
+		local result = 0
+		local bitval = 1
+		while a > 0 or b > 0 do
+			if (a % 2) ~= (b % 2) then
+				result = result + bitval
+			end
+			a = floor(a / 2)
+			b = floor(b / 2)
+			bitval = bitval * 2
+		end
+		return result
+	end
+
 	-- Always build a 256x256 table once at load time; avoids any reliance on bitwise operators.
-	local fn = slow_xor
 	for i=0,255 do
 		local row = {}
 		for j=0,255 do
-			row[j] = fn(i,j)
+			row[j] = slow_xor(i,j)
 		end
 		xor_lookup[i] = row
 	end
-end
-
--- Calculate bitwise xor of bytes m and n. 0 <= m,n <= 255.
-local function bit_xor(m,n)
-	return xor_lookup[m][n]
 end
 
 local decToHexTable={
@@ -179,7 +174,7 @@ local function get_version_eclevel(len,mode,requested_ec_level)
 
 	local bits, digits, modebits, c
 	local tab = { {10,9,8,8},{12,11,16,10},{14,13,16,12} }
-	local minversion = 40
+	local minversion = 99 -- placeholder, must be replaced by a lower value
 	local maxec_level = requested_ec_level or 1
 	local minlv,maxlv = 1, 4
 	if requested_ec_level and requested_ec_level >= 1 and requested_ec_level <= 4 then
@@ -216,6 +211,7 @@ local function get_version_eclevel(len,mode,requested_ec_level)
 			end
 		end
 	end
+	assert(minversion<=40,"Data too long to encode in QR code")
 	return minversion, maxec_level
 end
 
@@ -503,7 +499,7 @@ local function calculate_error_correction(data,num_ec_codewords)
 		end
 
 		for i=highest_exponent,0,-1 do
-			mp_int[i] = bit_xor(alpha_int[gp_alpha[i]],mp_int[i])
+			mp_int[i] = xor_lookup[alpha_int[gp_alpha[i]]][mp_int[i]]
 		end
 		-- remove leading 0's
 		for i=highest_exponent,num_ec_codewords,-1 do
@@ -626,14 +622,11 @@ local function arrange_codewords_and_calculate_ec(version,ec_level,data)
 	local size_datablock_bytes, size_ecblock_bytes
 	local datablocks = {}
 	local final_ecblocks = {}
-	local count = 1
 	local pos = 0
-	local cpty_ec_bits = 0
 	for i=1,#blocks/2 do
+		size_datablock_bytes = blocks[2*i][2]
+		size_ecblock_bytes   = blocks[2*i][1] - size_datablock_bytes
 		for _=1,blocks[2*i - 1] do
-			size_datablock_bytes = blocks[2*i][2]
-			size_ecblock_bytes   = blocks[2*i][1] - blocks[2*i][2]
-			cpty_ec_bits = cpty_ec_bits + size_ecblock_bytes * 8
 			datablocks[#datablocks + 1] = sub(data, pos * 8 + 1,( pos + size_datablock_bytes)*8)
 			local tmp_tab = calculate_error_correction(datablocks[#datablocks],size_ecblock_bytes)
 			local tmp_str = {}
@@ -642,35 +635,31 @@ local function arrange_codewords_and_calculate_ec(version,ec_level,data)
 			end
 			final_ecblocks[#final_ecblocks + 1] = concat(tmp_str)
 			pos = pos + size_datablock_bytes
-			count = count + 1
 		end
 	end
+
+	-- Weave the data blocks. When there are multiple block sizes, the final data stream looks like:
+	-- b1's 1st byte, b2's 1st byte, (b3's 1st byte, ...)
+	-- b1's 2nd byte, b2's 2nd byte, (b3's 2nd byte, ...)
+	-- b1's 3rd byte, ...
 	local arranged_data = {}
-	local arranged_length = 0
-	pos = 1
-	while arranged_length < #data do
-		for i=1,#datablocks do
-			if pos < #datablocks[i] then
-				arranged_data[#arranged_data + 1] = sub(datablocks[i],pos, pos + 7)
-				arranged_length = arranged_length + 8
-			end
+	local maxBlockLen = 0
+	for i = 1, #datablocks do maxBlockLen = max(maxBlockLen, #datablocks[i]) end
+	for p = 1, maxBlockLen, 8 do
+		for i = 1, #datablocks do
+			arranged_data[#arranged_data + 1] = sub(datablocks[i], p, p + 7)
 		end
-		pos = pos + 8
 	end
-	-- ec
-	local arranged_ec = {}
-	local arranged_ec_length = 0
-	pos = 1
-	while arranged_ec_length < cpty_ec_bits do
-		for i=1,#final_ecblocks do
-			if pos < #final_ecblocks[i] then
-				arranged_ec[#arranged_ec + 1] = sub(final_ecblocks[i],pos, pos + 7)
-				arranged_ec_length = arranged_ec_length + 8
-			end
+
+	-- Same for EC blocks
+	maxBlockLen = 0
+	for i = 1, #final_ecblocks do maxBlockLen = max(maxBlockLen, #final_ecblocks[i]) end
+	for p = 1, maxBlockLen, 8 do
+		for i = 1, #final_ecblocks do
+			arranged_data[#arranged_data + 1] = sub(final_ecblocks[i], p, p + 7)
 		end
-		pos = pos + 8
 	end
-	return concat(arranged_data) .. concat(arranged_ec)
+	return concat(arranged_data)
 end
 
 
@@ -946,7 +935,7 @@ local function add_data_to_matrix(matrix,data,mask)
 		if matrix[x][y]==0 then
 			matrix[x][y] = get_pixel_with_mask(mask,x,y,byte(data,ptr)-48) -- '0' = 48, '1' = 49
 			ptr = ptr + 1
-			if ptr > #data then return matrix end -- all data written, finish
+			if ptr > #data or x < 0 then return matrix end -- all data written, finish
 		end
 
 		-- Move to next cell (won't write into unavailable cell so it's fine to move 1 step each time)
@@ -1181,7 +1170,7 @@ if testing then
 		arrange_codewords_and_calculate_ec = arrange_codewords_and_calculate_ec,
 		calculate_error_correction = calculate_error_correction,
 		convert_bitstring_to_bytes = convert_bitstring_to_bytes,
-		bit_xor = bit_xor,
+		xor_lookup = xor_lookup,
 		calculate_penalty = calculate_penalty,
 		get_matrix_and_penalty = get_matrix_and_penalty,
 	}

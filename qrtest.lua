@@ -56,8 +56,8 @@ assert_equal(tab[1],32,"convert_bitstring_to_bytes")
 tab = qrcode.convert_bitstring_to_bytes("1111111100000001")
 assert_equal(tab[1],255,"convert_bitstring_to_bytes 2")
 assert_equal(tab[2],1,"convert_bitstring_to_bytes 3")
-assert_equal(qrcode.bit_xor(141,43), 166,"bit_xor")
-assert_equal(qrcode.bit_xor(179,0), 179,"bit_xor")
+assert_equal(qrcode.xor_lookup[141][43], 166,"xor_lookup")
+assert_equal(qrcode.xor_lookup[179][0], 179,"xor_lookup")
 
 -- local hello_world_msg_with_ec = "0010000001011011000010110111100011010001011100101101110001001101010000110100000011101100000100011110110010101000010010000001011001010010110110010011011010011100000000000010111000001111101101000111101000010000"
 
